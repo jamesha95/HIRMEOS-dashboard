@@ -71,6 +71,8 @@ ui <- fluidPage(theme = "journal.css",
                 # Application title
                 titlePanel("Readership metrics"),
                 
+                # re-arrange the elements of the dashboard
+                
                 # a metric insensitive to title choice
                 textOutput(outputId = "no_titles"), # consider using h2 and choosing a different font
                 
@@ -98,7 +100,7 @@ ui <- fluidPage(theme = "journal.css",
                 
                 #global dot map
                 #top 10 countries bar chart
-                #views per month for selected title, split by platform-metric 
+                #views per month for selected title, split by platform/metric 
                 
                 
                 # some JS to recorc the window size
@@ -171,7 +173,11 @@ server <- function(input, output) {
     # might need an API to publish plotly charts
   })
   
+  # Map of the world
   
+  # Top country bar chart
+  
+  # Line chart by platform
   
   
 }

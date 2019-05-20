@@ -1,0 +1,2 @@
+event_id,timestamp,measure,URI,value,uploader,country
+1efd29cf-a8a4-4535-b48e-2f5f7fe53d7c,2018-03-05T00:00:00+0000,"tag:operas.eu,2018:readership:obp-html",info:doi:10.11647/obp.0001,3,acct:metrics-bot@openbookpublishers.com,urn:iso:std:3166:-2:FR
