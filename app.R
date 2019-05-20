@@ -9,6 +9,11 @@ library(rcrossref)
 library(plotly)
 library(shinyWidgets)
 library(countrycode)
+library(scales)
+library(zoo)
+library(lubridate)
+
+options(stringsAsFactors = FALSE)
 
 
 # Import local data as required
@@ -32,17 +37,30 @@ all_data <- metrics_data %>%
          country_uri, # this tells us what country
          title, # this is the title
          publisher) %>%  # together, these are the data we'll analyse for now
-# later we will include events (altmetrics)
+  # later we will include events (altmetrics)
   mutate(country_name = countrycode(substr(country_uri, start = 21, stop = 22), 
                                     origin = "iso2c", 
-                                    destination = "country.name"))
+                                    destination = "country.name")) %>%
+  mutate(measure = case_when(measure_id == "https://metrics.operas-eu.org/classics-library/sessions/v1" ~ "sessions",
+                             measure_id == "https://metrics.operas-eu.org/google-books/views/v1" ~ "views",
+                             measure_id == "https://metrics.operas-eu.org/oapen/downloads/v1" ~ "downloads",
+                             measure_id == "https://metrics.operas-eu.org/obp-html/sessions/v1" ~ "sessions",
+                             measure_id == "https://metrics.operas-eu.org/obp-pdf/sessions/v1"  ~ "sessions", 
+                             measure_id == "https://metrics.operas-eu.org/obp/downloads/v1" ~ "downloads",
+                             measure_id == "https://metrics.operas-eu.org/open-edition/downloads/v1" ~ "downloads",
+                             measure_id == "https://metrics.operas-eu.org/world-reader/users/v1" ~ "users"))
 # Have some data pre-processed and ready to go here, so that the entire datafile doesn't need uploading
 # each time someone uses the app. 
 titles <- all_data %>%
   filter(!is.na(title)) %>%
   pull(title) %>%
-  unique()
+  unique() %>% 
+  sort()
 
+measures <- all_data %>%
+  filter(!is.na(measure)) %>%
+  pull(measure) %>%
+  unique()
 
 
 # 
@@ -67,8 +85,15 @@ ui <- fluidPage(theme = "journal.css",
                 textOutput("total_access"),
                 textOutput("no_countries_reached"),
                 
-                #plotOutput("metrics_table"), #table of access by different metrics
-                plotOutput("monthly_access", height = "3600px"),
+                tableOutput("metrics_table"), #table of access by different metrics
+                
+                pickerInput(inputId = "metric", 
+                            label = "Choose a metric or select all", 
+                            selected = measures,
+                            choices = measures,
+                            options = list(`actions-box` = TRUE),
+                            multiple = T),
+                plotOutput("monthly_access"),
                 
                 
                 #global dot map
@@ -78,7 +103,7 @@ ui <- fluidPage(theme = "journal.css",
                 
                 # some JS to recorc the window size
                 tags$head(tags$script('
-                        var width = 0;
+                                      var width = 0;
                                       $(document).on("shiny:connected", function(e) {
                                       width = window.innerWidth;
                                       Shiny.onInputChange("width", width);
@@ -88,8 +113,8 @@ ui <- fluidPage(theme = "journal.css",
                                       Shiny.onInputChange("width", width);
                                       });
                                       '))
-                  
-)
+                
+                )
 
 
 ##---- The Server -------------------------------------------------------------------------------
@@ -116,11 +141,37 @@ server <- function(input, output) {
     return(paste0("Countries reached: ", no_countries_reached))
   })
   
+  output$metrics_table <- renderTable({
+    this_data <- all_data %>%
+      filter(title %in% input$title, !is.na(value.x)) %>%   
+      group_by(measure)%>%
+      summarise(values = as.integer(sum(value.x))) 
+    return(this_data)
+    
+  })
   
-  #output$monthly_access <- renderPlotly({
-  #})
+  output$monthly_access <- renderPlot({
+    this_data <- all_data %>%
+      filter(title %in% input$title) %>% 
+      filter(measure %in% input$metric) %>% 
+      mutate(yq = as.yearqtr(timestamp.x)) %>% 
+      group_by(measure, yq)%>%
+      summarise(values = sum(value.x)) %>%
+      arrange(yq)
+    
+    p <- ggplot(this_data, mapping = aes(x = yq, y = values))
+    p <- p + geom_col(aes(fill = measure))
+    p <- p + scale_y_continuous(labels = comma)
+    p <- p + ggtitle("Readership over time")
+    p <- p + ylab("Interactions")
+    p <- p + xlab("")
+    p <- p + scale_x_yearqtr(format = "%Y-Q%q")
+    
+    return(p) #consider return(ggplotly(p)) for interactivity, if we can get it to work
+    # might need an API to publish plotly charts
+  })
   
-  #output$metrics_table <- renderTable()
+  
   
   
 }
