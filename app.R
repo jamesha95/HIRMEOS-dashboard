@@ -101,15 +101,7 @@ measures <- all_data %>%
 #---- The User Interface: Header and sidebar----------------------------------------------------------------------------
 
 ui <- dashboardPage(skin = "black",
-                    header = dashboardHeader(title = "Readership metrics",
-                                             
-                                             #Instead of having dropdown menus, we'll have the HIRMEOS logo
-                                             tags$li(a(href = 'https://www.hirmeos.eu/',
-                                                       img(src = 'HIRMEOS_LOGO_rect.png', height = "70px") # 70px is nice compromise
-                                             ),
-                                             class = "dropdown"
-                                             )
-                                             
+                    header = dashboardHeader(title = "Readership metrics"
                     ),
                     
                     sidebar = dashboardSidebar(
@@ -118,7 +110,14 @@ ui <- dashboardPage(skin = "black",
                         id = "tabs",
                         menuItem("Summary", tabName = "Summary", icon = icon("dashboard")),
                         menuItem("Metrics by title", tabName = "Metrics_by_title", icon = icon("book")),
-                        menuItem("Metrics by country", tabName = "Metrics_by_country", icon = icon("globe"))
+                        menuItem("Metrics by country", tabName = "Metrics_by_country", icon = icon("globe")),
+                        
+                        # We add a horizontal line, followed by the HIRMEOS logo
+                        hr(),
+                        
+                        a(href = 'https://www.hirmeos.eu/',
+                          img(src = 'HIRMEOS_LOGO_rect.png', width = "100%")
+                        )
                       )
                     ),
                     
@@ -128,83 +127,90 @@ ui <- dashboardPage(skin = "black",
                       
                       #Set a theme if desired - check if this works within the dashboardPage function
                       #theme = "journal.css",
-                                         
-                                         tabItems(
-                                           
-                                           #---- Tab 1: Summary----------------------------------------------------------------------------------                              
-                                           
-                                           tabItem(tabName = "Summary",
-                                                   
-                                                   fluidRow(column(6,
-                                                                   # First interactive content: choosing book by title
-                                                                   wellPanel(pickerInput(inputId = "title", 
-                                                                                         label = "Choose a title or select all", 
-                                                                                         selected = titles,
-                                                                                         choices = titles,
-                                                                                         options = list(`actions-box` = TRUE)
-                                                                   )
-                                                                   ),
-                                                                   multiple = T)
-                                                   ),
-                                                   
-                                                   fluidRow(
-                                                     # A static valueBox
-                                                     valueBox(no_titles, "Titles published", icon = icon("book-open")),
-                                                     
-                                                     # Dynamic valueBoxes
-                                                     valueBoxOutput(outputId = "total_access"),
-                                                     
-                                                     valueBoxOutput(outputId = "no_countries_reached")
-                                                   ),
-                                                   
-                                                   fluidRow(column(4,
-                                                                   textOutput(outputId = "no_titles"), 
-                                                                   textOutput("total_access"),
-                                                                   textOutput("no_countries_reached")),
-                                                            
-                                                            column(4, tableOutput("metrics_table"))), #table of access by different metrics
-                                                   
-                                                   wellPanel(checkboxGroupInput(inputId = "metric", 
-                                                                                label = "Choose metrics", 
-                                                                                selected = measures,
-                                                                                choices = measures),
-                                                             pickerInput(inputId = "title2", 
-                                                                         label = "Choose a title or select all", 
-                                                                         selected = titles,
-                                                                         choices = titles,
-                                                                         options = list(`actions-box` = TRUE),
-                                                                         multiple = T)),
-                                                   plotOutput("monthly_access")
-                                           ),
-                                           
-                                           #---- Tab 2: Metrics by title---------------------------------------------------------------------------------- 
-                                           
-                                           tabItem(tabName = "Metrics_by_title",
-                                                   wellPanel(pickerInput(inputId = "titletab_title", 
-                                                                         label = "Choose a title or select all", 
-                                                                         selected = titles,
-                                                                         choices = titles,
-                                                                         options = pickerOptions(liveSearch = TRUE,
-                                                                                                 virtualScroll = TRUE))
+                      
+                      tabItems(
+                        
+                        #---- Tab 1: Summary----------------------------------------------------------------------------------                              
+                        
+                        tabItem(tabName = "Summary",
+                                
+                                fluidRow(
+                                  column(6,
+                                         # First interactive content: choosing book by title
+                                         wellPanel(pickerInput(inputId = "title", 
+                                                               label = "Choose a title or select all", 
+                                                               selected = titles,
+                                                               choices = titles,
+                                                               options = pickerOptions(actionsBox = TRUE,
+                                                                                       liveSearch = TRUE,
+                                                                                       virtualScroll = TRUE),
+                                                               multiple = TRUE)
                                                    )
-                                           ),
-                                           
-                                           #---- Tab 3: Metrics by country------------------------------------------------------------------------------
-                                           
-                                           tabItem(tabName = "Metrics_by_country",
-                                                   h2("We'll put country charts here")
-                                                   
-                                                   
-                                                   
-                                                   
-                                                   #global dot map
-                                                   #top 10 countries bar chart
-                                                   #views per month for selected title, split by platform/metric 
-                                                   
-                                           )
-                                           # end of the tabbed items
-                                           
-                                         ) # end of tabItems()
+                                         )
+                                 ),
+                                
+                                fluidRow(
+                                  # A static valueBox
+                                  valueBox(no_titles, "Titles published", icon = icon("book-open"), width = 4),
+                                  
+                                  # Dynamic valueBoxes
+                                 valueBoxOutput(outputId = "total_access", width = 4),
+                                  
+                                 valueBoxOutput(outputId = "no_countries_reached", width = 4)
+                                ),
+                                
+                                # fluidRow(column(4,
+                                #                 textOutput(outputId = "no_titles"), 
+                                #                 textOutput("total_access"),
+                                #                 textOutput("no_countries_reached")
+                                # ),
+                                
+                                fluidRow( 
+                                  #table of access by different metrics     
+                                  box(tableOutput("metrics_table"), width = 6)
+                                ), 
+                                
+                                wellPanel(checkboxGroupInput(inputId = "metric", 
+                                                             label = "Choose metrics", 
+                                                             selected = measures,
+                                                             choices = measures),
+                                          pickerInput(inputId = "title2", 
+                                                      label = "Choose a title or select all", 
+                                                      selected = titles,
+                                                      choices = titles,
+                                                      options = list(`actions-box` = TRUE),
+                                                      multiple = T)),
+                                box(plotOutput("monthly_access"), width = 12)
+                        ),
+                        
+                        #---- Tab 2: Metrics by title---------------------------------------------------------------------------------- 
+                        
+                        tabItem(tabName = "Metrics_by_title",
+                                wellPanel(pickerInput(inputId = "titletab_title", 
+                                                      label = "Choose a title or select all", 
+                                                      selected = titles,
+                                                      choices = titles,
+                                                      options = pickerOptions(liveSearch = TRUE,
+                                                                              virtualScroll = TRUE))
+                                )
+                        ),
+                        
+                        #---- Tab 3: Metrics by country------------------------------------------------------------------------------
+                        
+                        tabItem(tabName = "Metrics_by_country",
+                                h2("We'll put country charts here")
+                                
+                                
+                                
+                                
+                                #global dot map
+                                #top 10 countries bar chart
+                                #views per month for selected title, split by platform/metric 
+                                
+                        )
+                        # end of the tabbed items
+                        
+                      ) # end of tabItems()
                     ) # end of dashboardBody
 )
 
@@ -219,10 +225,11 @@ server <- function(input, output) {
       pull(value.x) %>% 
       sum() %>% 
       prettyNum(big.mark = ",")
-    return(valueBox(
-      paste0(total_access), "Total Access", icon = icon("book-reader"),
-      color = "purple"
-    ))
+    valueBox(value = paste0(total_access), 
+             subtitle = "Total Access", 
+             icon = icon("book-reader"),
+             color = "purple")
+    
   })
   
   # output$total_access <- renderText({
@@ -240,7 +247,7 @@ server <- function(input, output) {
       pull(country_name) %>% 
       unique() %>% 
       length()
-    return(valueBox(paste0(no_countries_reached), "Number of countries reached", icon = icon("flag")))
+    return(valueBox(paste0(no_countries_reached), "Countries reached", icon = icon("flag")))
   })
   
   output$metrics_table <- renderTable({
