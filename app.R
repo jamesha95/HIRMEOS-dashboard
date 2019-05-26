@@ -58,7 +58,8 @@ altmetrics_data <- read_csv("data/altmetrics.csv") %>%
 all_data <- metrics_data %>%
   left_join(meta_data, by = c("work_uri" = "work_uri")) %>% 
   left_join(altmetrics_data, by = c("work_uri" = "URI")) %>%
-  filter(type %in% c("monograph", "book")) %>%  # for now, we will focus on book & monograph data
+  filter(type %in% c("monograph", "book")) %>%  # for now, we will focus on book & monograph data. If we allow chapters,
+  # we'll need to generalise the search/filters in the UI to select for books/monograph/chapters
   select(measure_id, # this tells us what sort of metric we're looking at
          value.x, # the value of the metric   
          timestamp.x, # this tells us what date
@@ -69,6 +70,7 @@ all_data <- metrics_data %>%
   mutate(country_name = countrycode(substr(country_uri, start = 21, stop = 22), 
                                     origin = "iso2c", 
                                     destination = "country.name")) %>%
+  # this step needs to be fixed either with regex, or by reference to the OPERAS measures webpage
   mutate(measure = case_when(measure_id == "https://metrics.operas-eu.org/classics-library/sessions/v1" ~ "sessions",
                              measure_id == "https://metrics.operas-eu.org/google-books/views/v1" ~ "views",
                              measure_id == "https://metrics.operas-eu.org/oapen/downloads/v1" ~ "downloads",
@@ -100,7 +102,7 @@ measures <- all_data %>%
 
 #---- The User Interface: Header and sidebar----------------------------------------------------------------------------
 
-ui <- dashboardPage(skin = "black",
+ui <- dashboardPage(skin = "purple",
                     header = dashboardHeader(title = "Readership metrics"
                     ),
                     
@@ -112,12 +114,34 @@ ui <- dashboardPage(skin = "black",
                         menuItem("Metrics by title", tabName = "Metrics_by_title", icon = icon("book")),
                         menuItem("Metrics by country", tabName = "Metrics_by_country", icon = icon("globe")),
                         
-                        # We add a horizontal line, followed by the HIRMEOS logo
+                        # We add a horizontal line, followed by the HIRMEOS logo, OPERAS logo and EU logo
                         hr(),
                         
                         a(href = 'https://www.hirmeos.eu/',
-                          img(src = 'HIRMEOS_LOGO_rect.png', width = "100%")
-                        )
+                          img(src = 'HIRMEOS_LOGO_rect.png', 
+                              width = "100%")
+                        ),
+                        
+                       
+                        br(),
+                        br(),
+                        br(),
+                       
+                        
+                        a(href = 'https://operas.hypotheses.org/',
+                          img(src = 'https://operas.hypotheses.org/files/2017/04/Logo-OPERAS.png', 
+                              width = "100%")
+                        ),
+                        
+                        br(),
+                        br(),
+                        br(),
+                        
+                        
+                        img(src = 'https://hirmeos.eu/wp-content/uploads/2017/03/logo-ce-horizontal-en-pantone-lr.png', 
+                            width = "100%")
+                        
+                        
                       )
                     ),
                     
