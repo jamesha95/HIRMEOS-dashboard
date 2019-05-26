@@ -1,6 +1,9 @@
 # This script produces the shiny app that will be used to display HIRMEOS metrics
 
-##---- Set up ----
+#---- Set up ------------------------------------------------------------------------------
+
+# Here's the packages that will be needed
+
 list.of.packages <- c("ggplot2",
                       "shiny",
                       "tidyverse",
@@ -11,13 +14,18 @@ list.of.packages <- c("ggplot2",
                       "scales",
                       "zoo",
                       "lubridate",
-                      "RColorBrewer")
+                      "RColorBrewer",
+                      "shinydashboard")
+
+# This code checks for these packages and installs them if they need installing
+
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
-
 # Load packages
+
 library(shiny)
+library(shinydashboard)
 library(tidyverse)
 library(rcrossref)
 #library(plotly)
@@ -28,11 +36,15 @@ library(zoo)
 library(lubridate)
 library(RColorBrewer)
 
+#We disable R's feature that automatically reads in strings as factors. In this work, strings are generally just strings
 
 options(stringsAsFactors = FALSE)
 
 
-# Import local data as required
+
+
+# Import local data and tidy------------------------------------------------------------------------------
+
 metrics_data <- read_csv("data/metrics.csv") %>% 
   as_tibble()
 
@@ -46,7 +58,8 @@ altmetrics_data <- read_csv("data/altmetrics.csv") %>%
 all_data <- metrics_data %>%
   left_join(meta_data, by = c("work_uri" = "work_uri")) %>% 
   left_join(altmetrics_data, by = c("work_uri" = "URI")) %>%
-  filter(type %in% c("monograph", "book")) %>%  # for now, we will focus on book & monograph data
+  filter(type %in% c("monograph", "book")) %>%  # for now, we will focus on book & monograph data. If we allow chapters,
+  # we'll need to generalise the search/filters in the UI to select for books/monograph/chapters
   select(measure_id, # this tells us what sort of metric we're looking at
          value.x, # the value of the metric   
          timestamp.x, # this tells us what date
@@ -57,6 +70,7 @@ all_data <- metrics_data %>%
   mutate(country_name = countrycode(substr(country_uri, start = 21, stop = 22), 
                                     origin = "iso2c", 
                                     destination = "country.name")) %>%
+  # this step needs to be fixed either with regex, or by reference to the OPERAS measures webpage
   mutate(measure = case_when(measure_id == "https://metrics.operas-eu.org/classics-library/sessions/v1" ~ "sessions",
                              measure_id == "https://metrics.operas-eu.org/google-books/views/v1" ~ "views",
                              measure_id == "https://metrics.operas-eu.org/oapen/downloads/v1" ~ "downloads",
@@ -68,11 +82,14 @@ all_data <- metrics_data %>%
   mutate(yq = as.yearqtr(timestamp.x)) # We add year-quarters for the readership dates
 # Have some data pre-processed and ready to go here, so that the entire datafile doesn't need uploading
 # each time someone uses the app. 
+
 titles <- all_data %>%
   filter(!is.na(title)) %>%
   pull(title) %>%
   unique() %>% 
   sort()
+
+no_titles <- prettyNum(length(titles), big.mark = ",")
 
 measures <- all_data %>%
   filter(!is.na(measure)) %>%
@@ -80,89 +97,181 @@ measures <- all_data %>%
   unique()
 
 
-# 
 
-##---- The User Interface ----------------------------------------------------------------------------
-ui <- fluidPage(theme = "journal.css",
-                
-                # Application title
-                titlePanel("HIRMEOS: Readership metrics"),
-                
-                # re-arrange the elements of the dashboard
-                fluidRow(
-                  # things the user can interact with
-                  wellPanel(pickerInput(inputId = "title", 
-                                        label = "Choose a title or select all", 
-                                        selected = titles,
-                                        choices = titles,
-                                        options = list(`actions-box` = TRUE),
-                                        multiple = T))
-                ),
-                
-                fluidRow(column(4,
-                                textOutput(outputId = "no_titles"), 
-                                textOutput("total_access"),
-                                textOutput("no_countries_reached")),
-                         
-                         column(4, tableOutput("metrics_table"))), #table of access by different metrics
-                
-                wellPanel(checkboxGroupInput(inputId = "metric", 
-                                             label = "Choose metrics", 
-                                             selected = measures,
-                                             choices = measures),
-                          pickerInput(inputId = "title2", 
-                                      label = "Choose a title or select all", 
-                                      selected = titles,
-                                      choices = titles,
-                                      options = list(`actions-box` = TRUE),
-                                      multiple = T)),
-                plotOutput("monthly_access")
-                
-                
-                #global dot map
-                #top 10 countries bar chart
-                #views per month for selected title, split by platform/metric 
-                
-                
-                # some JS to recorc the window size
-                # tags$head(tags$script('
-                #                       var width = 0;
-                #                       $(document).on("shiny:connected", function(e) {
-                #                       width = window.innerWidth;
-                #                       Shiny.onInputChange("width", width);
-                #                       });
-                #                       $(window).resize(function(e) {
-                #                       width = window.innerWidth;
-                #                       Shiny.onInputChange("width", width);
-                #                       });
-                #                       '))
-                
+
+
+#---- The User Interface: Header and sidebar----------------------------------------------------------------------------
+
+ui <- dashboardPage(skin = "purple",
+                    header = dashboardHeader(title = "Readership metrics"
+                    ),
+                    
+                    sidebar = dashboardSidebar(
+                      sidebarMenu(
+                        # Setting id makes input$tabs give the tabName of currently-selected tab
+                        id = "tabs",
+                        menuItem("Summary", tabName = "Summary", icon = icon("dashboard")),
+                        menuItem("Metrics by title", tabName = "Metrics_by_title", icon = icon("book")),
+                        menuItem("Metrics by country", tabName = "Metrics_by_country", icon = icon("globe")),
+                        
+                        # We add a horizontal line, followed by the HIRMEOS logo, OPERAS logo and EU logo
+                        hr(),
+                        
+                        a(href = 'https://www.hirmeos.eu/',
+                          img(src = 'HIRMEOS_LOGO_rect.png', 
+                              width = "100%")
+                        ),
+                        
+                       
+                        br(),
+                        br(),
+                        br(),
+                       
+                        
+                        a(href = 'https://operas.hypotheses.org/',
+                          img(src = 'https://operas.hypotheses.org/files/2017/04/Logo-OPERAS.png', 
+                              width = "100%")
+                        ),
+                        
+                        br(),
+                        br(),
+                        br(),
+                        
+                        
+                        img(src = 'https://hirmeos.eu/wp-content/uploads/2017/03/logo-ce-horizontal-en-pantone-lr.png', 
+                            width = "100%")
+                        
+                        
+                      )
+                    ),
+                    
+                    #---- The User Interface: Body----------------------------------------------------------------------------------                    
+                    
+                    body = dashboardBody(
+                      
+                      #Set a theme if desired - check if this works within the dashboardPage function
+                      #theme = "journal.css",
+                      
+                      tabItems(
+                        
+                        #---- Tab 1: Summary----------------------------------------------------------------------------------                              
+                        
+                        tabItem(tabName = "Summary",
+                                
+                                fluidRow(
+                                  column(6,
+                                         # First interactive content: choosing book by title
+                                         wellPanel(pickerInput(inputId = "title", 
+                                                               label = "Choose a title or select all", 
+                                                               selected = titles,
+                                                               choices = titles,
+                                                               options = pickerOptions(actionsBox = TRUE,
+                                                                                       liveSearch = TRUE,
+                                                                                       virtualScroll = TRUE),
+                                                               multiple = TRUE)
+                                                   )
+                                         )
+                                 ),
+                                
+                                fluidRow(
+                                  # A static valueBox
+                                  valueBox(no_titles, "Titles published", icon = icon("book-open"), width = 4),
+                                  
+                                  # Dynamic valueBoxes
+                                 valueBoxOutput(outputId = "total_access", width = 4),
+                                  
+                                 valueBoxOutput(outputId = "no_countries_reached", width = 4)
+                                ),
+                                
+                                # fluidRow(column(4,
+                                #                 textOutput(outputId = "no_titles"), 
+                                #                 textOutput("total_access"),
+                                #                 textOutput("no_countries_reached")
+                                # ),
+                                
+                                fluidRow( 
+                                  #table of access by different metrics     
+                                  box(tableOutput("metrics_table"), width = 6)
+                                ), 
+                                
+                                wellPanel(checkboxGroupInput(inputId = "metric", 
+                                                             label = "Choose metrics", 
+                                                             selected = measures,
+                                                             choices = measures),
+                                          pickerInput(inputId = "title2", 
+                                                      label = "Choose a title or select all", 
+                                                      selected = titles,
+                                                      choices = titles,
+                                                      options = list(`actions-box` = TRUE),
+                                                      multiple = T)),
+                                box(plotOutput("monthly_access"), width = 12)
+                        ),
+                        
+                        #---- Tab 2: Metrics by title---------------------------------------------------------------------------------- 
+                        
+                        tabItem(tabName = "Metrics_by_title",
+                                wellPanel(pickerInput(inputId = "titletab_title", 
+                                                      label = "Choose a title or select all", 
+                                                      selected = titles,
+                                                      choices = titles,
+                                                      options = pickerOptions(liveSearch = TRUE,
+                                                                              virtualScroll = TRUE))
+                                )
+                        ),
+                        
+                        #---- Tab 3: Metrics by country------------------------------------------------------------------------------
+                        
+                        tabItem(tabName = "Metrics_by_country",
+                                h2("We'll put country charts here")
+                                
+                                
+                                
+                                
+                                #global dot map
+                                #top 10 countries bar chart
+                                #views per month for selected title, split by platform/metric 
+                                
+                        )
+                        # end of the tabbed items
+                        
+                      ) # end of tabItems()
+                    ) # end of dashboardBody
 )
 
 
 ##---- The Server -------------------------------------------------------------------------------
 server <- function(input, output) {
-  output$no_titles <- renderText({
-    no_titles <- prettyNum(length(titles), big.mark = ",")
-    return(paste0("Titles published: ", no_titles))
-  })
   
-  output$total_access <- renderText({
+  #---- Summary Tab: Value boxes
+  output$total_access <- renderValueBox({
     total_access <- all_data %>%
       filter(title %in% input$title, !is.na(value.x)) %>% 
       pull(value.x) %>% 
       sum() %>% 
       prettyNum(big.mark = ",")
-    return(paste0("Total acccess: ", total_access))
+    valueBox(value = paste0(total_access), 
+             subtitle = "Total Access", 
+             icon = icon("book-reader"),
+             color = "purple")
+    
   })
   
-  output$no_countries_reached <- renderText({
+  # output$total_access <- renderText({
+  #   total_access <- all_data %>%
+  #     filter(title %in% input$title, !is.na(value.x)) %>% 
+  #     pull(value.x) %>% 
+  #     sum() %>% 
+  #     prettyNum(big.mark = ",")
+  #   return(paste0("Total acccess: ", total_access))
+  # })
+  
+  output$no_countries_reached <- renderValueBox({
     no_countries_reached <- all_data %>%
       filter(title %in% input$title, !is.na(value.x)) %>% 
       pull(country_name) %>% 
       unique() %>% 
-      length
-    return(paste0("Countries reached: ", no_countries_reached))
+      length()
+    return(valueBox(paste0(no_countries_reached), "Countries reached", icon = icon("flag")))
   })
   
   output$metrics_table <- renderTable({
@@ -170,7 +279,7 @@ server <- function(input, output) {
       filter(title %in% input$title, !is.na(value.x)) %>%   
       group_by(measure)%>%
       summarise(value = prettyNum(sum(value.x),
-                                big.mark = ",")) %>%
+                                  big.mark = ",")) %>%
       rename(metric = measure)
     return(this_data)
   }, align = "cr", digits = 0)
