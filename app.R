@@ -10,13 +10,13 @@ list.of.packages <- c("ggplot2",
                       "rcrossref",
                       "plotly",
                       "shinyWidgets",
-                      "countrycode",
+                #      "countrycode",
                       "scales",
                       "zoo",
                       "lubridate",
                       "RColorBrewer",
                       "shinydashboard",
-                      "shinythemes")
+                      "leaflet")
 
 
 # This code checks for these packages and installs them if they need installing
@@ -32,12 +32,12 @@ library(tidyverse)
 library(rcrossref)
 #library(plotly)
 library(shinyWidgets)
-library(countrycode)
+#library(countrycode)
 library(scales)
 library(zoo)
 library(lubridate)
 library(RColorBrewer)
-library(shinythemes)
+library(leaflet)
 
 #We disable R's feature that automatically reads in strings as factors. In this work, strings are generally just strings
 
@@ -64,6 +64,12 @@ meta_data <- read_csv("data/metadata.csv") %>%
 altmetrics_data <- read_csv("data/altmetrics.csv") %>% 
   as_tibble()
 
+country_geodata <- read_csv("data/country_centroids.csv") %>%
+  select(country_name = admin,
+         country_code =iso_a2, 
+         longitude = Longitude, 
+         latitude = Latitude)  # source: https://worldmap.harvard.edu/data/geonode:country_centroids_az8
+
 all_data <- metrics_data %>%
   left_join(meta_data, by = c("work_uri" = "work_uri")) %>% 
   left_join(altmetrics_data, by = c("work_uri" = "URI")) %>%
@@ -76,10 +82,13 @@ all_data <- metrics_data %>%
          title, # this is the title
          publisher) %>%  # together, these are the data we'll analyse for now
   # later we will include events (altmetrics)
-  mutate(country_name = countrycode(substr(country_uri, start = 21, stop = 22), 
-                                    origin = "iso2c", 
-                                    destination = "country.name",
-                                    nomatch = "No info")) %>%
+  mutate(country_code = ifelse(is.na(country_uri), 
+                                     "missing",
+                                     substr(country_uri, start = 21, stop = 22))) %>%
+  left_join(country_geodata, by = "country_code") %>%
+  mutate(country_name = ifelse(is.na(country_name), 
+                               "No info", 
+                               country_name)) %>% 
   # this step needs to be fixed either with regex, or by reference to the OPERAS measures webpage
   mutate(measure = case_when(measure_id == "https://metrics.operas-eu.org/classics-library/sessions/v1" ~ "sessions",
                              measure_id == "https://metrics.operas-eu.org/google-books/views/v1" ~ "views",
@@ -388,9 +397,21 @@ ui <- dashboardPage(
       
       tabItem(tabName = "Metrics_by_country",
               h2("We'll put country charts here"),
-              
-              fluidRow(output$map)
-              
+              wellPanel(pickerInput(inputId = "title2", 
+                                    label = "Choose a title or select all", 
+                                   # selected = titles,  # start with all or none selected
+                                    choices = titles,
+                                    options = pickerOptions(actionsBox = TRUE,
+                                                            liveSearch = TRUE,
+                                                            virtualScroll = TRUE),
+                                    
+                                    multiple = TRUE)
+              ),
+             fluidRow(
+               box(leafletOutput("map"),
+                   width = 12),
+             p()
+             )
               
               
               
@@ -544,22 +565,42 @@ server <- function(input, output) {
     
   })
   
+  ##---- Leaflet tab --------------------------------------------------------------------
+  
   # Map of the world
-  title2_data <- reactive({
+  map_data <- reactive({
     all_data %>%
       filter(title_abbr %in% input$title2, # this filters for the chosen title
-             !is.na(value.x)) # this removes any measure with a missing value
-  }) # note that title_data() is an expression that retrieves a dataset, so must be called like a function 
+             !is.na(value.x),
+             !is.na(longitude))%>%
+      group_by(country_name) %>%
+      summarise(total_access = sum(value.x),
+                longitude = max(longitude, na.rm = TRUE),
+                latitude = max(latitude, na.rm = TRUE)) # all longitude/latitude values should be the same for a given country
+  }) 
   
   
-  output$map <- renderPlot({
-    map_data <- title_data()
-    
-    
-    
+  output$map <- renderLeaflet({
+    leaflet() %>%
+      addProviderTiles(providers$Stamen.TonerLite,
+                       options = providerTileOptions(noWrap = TRUE)
+      ) %>% 
+      setView(lng = 0, lat = 0, zoom = 1)
   })
   
-  
+  observe({
+    map_data <- map_data()
+    
+    leafletProxy("map", data = map_data()) %>%
+      clearShapes() %>%
+      addCircleMarkers(radius = ~log(total_access), 
+                 weight = 1, 
+                 color = hirmeos_blue,
+                 fillColor = hirmeos_blue, 
+                 fillOpacity = 0.7, 
+                 popup = ~paste0(country_name, ": ", total_access)
+      )
+  })
   
   # Line chart by platform
   
