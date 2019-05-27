@@ -4,19 +4,20 @@
 
 # Here's the packages that will be needed
 
-list.of.packages <- c("ggplot2",
-                      "shiny",
-                      "tidyverse",
-                      "rcrossref",
-                      "plotly",
-                      "shinyWidgets",
-                #      "countrycode",
-                      "scales",
-                      "zoo",
-                      "lubridate",
-                      "RColorBrewer",
-                      "shinydashboard",
-                      "leaflet")
+list.of.packages <- c("ggplot2", # for plotting
+                      "shiny", # for the shiny app features
+                      "tidyverse", # for data wrangling
+                      "rcrossref", # for getting metadata like title, authorship from DOI
+                #      "plotly", # for making interactive plots
+                      "shinyWidgets", # extends the number of shiny input options
+                #      "countrycode",  # this was used to identify countries from ISO code, but instead we have a .csv of correspondences now
+                      "scales", # for formatting certain data (such as percentages) nicely
+                      "zoo", # for formatting dates as year-quarters
+                      "lubridate", # for working with dates
+                      "RColorBrewer", # for making nice colour palettes 
+                      "shinydashboard", # for styling the shiny app as a dashboard easily
+                      "leaflet", # for the interactive map
+                      "rvest") # for getting the table of metrics from OPERAS
 
 
 # This code checks for these packages and installs them if they need installing
@@ -28,6 +29,7 @@ if(length(new.packages)) install.packages(new.packages)
 
 library(shiny)
 library(shinydashboard)
+library(shinyWidgets)
 library(tidyverse)
 library(rcrossref)
 #library(plotly)
@@ -38,6 +40,8 @@ library(zoo)
 library(lubridate)
 library(RColorBrewer)
 library(leaflet)
+library(rvest)
+
 
 #We disable R's feature that automatically reads in strings as factors. In this work, strings are generally just strings
 
@@ -63,6 +67,13 @@ meta_data <- read_csv("data/metadata.csv") %>%
 
 altmetrics_data <- read_csv("data/altmetrics.csv") %>% 
   as_tibble()
+
+# OPERASurl <- "https://metrics.operas-eu.org/measures"
+#  measures <- OPERASurl %>%
+#    read_html() %>%
+#  html_nodes(xpath = '//*[@id="root"]/div/section/section/main/div/div[2]/div/div/div/div/div/div[2]/div/div/div/div/div/table') %>%
+# html_table()
+# The OPERAS website has the table formatted using ant-table rather than table, which is very hard to extract. 
 
 country_geodata <- read_csv("data/country_centroids.csv") %>%
   select(country_name = admin,
