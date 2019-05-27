@@ -68,7 +68,9 @@ country_geodata <- read_csv("data/country_centroids.csv") %>%
   select(country_name = admin,
          country_code =iso_a2, 
          longitude = Longitude, 
-         latitude = Latitude)  # source: https://worldmap.harvard.edu/data/geonode:country_centroids_az8
+         latitude = Latitude) %>% # source: https://worldmap.harvard.edu/data/geonode:country_centroids_az8
+mutate(longitude = ifelse(country_name == "France", 2.61, longitude), 
+       latitude = ifelse(country_name == "France", 46.46, latitude))
 
 all_data <- metrics_data %>%
   left_join(meta_data, by = c("work_uri" = "work_uri")) %>% 
@@ -574,17 +576,21 @@ server <- function(input, output) {
              !is.na(longitude))%>%
       group_by(country_name) %>%
       summarise(total_access = sum(value.x),
-                longitude = max(longitude, na.rm = TRUE),
-                latitude = max(latitude, na.rm = TRUE)) # all longitude/latitude values should be the same for a given country
+                longitude = mean(longitude, na.rm = TRUE),
+                latitude = mean(latitude, na.rm = TRUE)) # all longitude/latitude values should be the same for a given country
   }) 
   
   
   output$map <- renderLeaflet({
-    leaflet() %>%
+    leaflet(options = leafletOptions(minZoom = 1, 
+                                     worldCopyJump = TRUE # This allows continuous panning left-right
+                                     )
+            ) %>%
       addProviderTiles(providers$Stamen.TonerLite,
-                       options = providerTileOptions(noWrap = TRUE)
+                       options = providerTileOptions(nowrap = FALSE)
       ) %>% 
-      setView(lng = 0, lat = 0, zoom = 1)
+      fitBounds(-180, -70, 180, 75)
+    
   })
   
   observe({
@@ -597,7 +603,7 @@ server <- function(input, output) {
                  color = hirmeos_blue,
                  fillColor = hirmeos_blue, 
                  fillOpacity = 0.7, 
-                 popup = ~paste0(country_name, ": ", total_access)
+                 popup = ~paste0(country_name, ": ", prettyNum(total_access, big.mark = ","))
       )
   })
   
