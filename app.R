@@ -204,7 +204,7 @@ ui <- dashboardPage(
       id = "tabs",
       menuItem("Summary", tabName = "Summary", icon = icon("dashboard")),
       menuItem("Metrics by title", tabName = "Metrics_by_title", icon = icon("book")),
-      menuItem("Metrics by country", tabName = "Metrics_by_country", icon = icon("globe")),
+      menuItem("Global reach", tabName = "Metrics_by_country", icon = icon("globe")),
       
       # We add a horizontal line, followed by the HIRMEOS logo, OPERAS logo and EU logo
       hr(),
@@ -299,7 +299,7 @@ ui <- dashboardPage(
                 
                 # adjacent to the table is the top 10 countries chart
                 
-                box(plotOutput("countries_barplot_all", height = "250px"), 
+                box(plotOutput("countries_barplot_all", height = "300px"), 
                     width = 8, 
                     title = "Top 10 countries by readership",
                     br(),
@@ -393,10 +393,9 @@ ui <- dashboardPage(
               )
       ),
       
-      #---- Tab 3: Metrics by country------------------------------------------------------------------------------
+      #---- Tab 3: Global reach------------------------------------------------------------------------------
       
       tabItem(tabName = "Metrics_by_country",
-              h2("We'll put country charts here"),
               wellPanel(pickerInput(inputId = "title2", 
                                     label = "Choose a title or select all", 
                                    # selected = titles,  # start with all or none selected
@@ -592,7 +591,7 @@ server <- function(input, output) {
     map_data <- map_data()
     
     leafletProxy("map", data = map_data()) %>%
-      clearShapes() %>%
+      clearMarkers() %>%
       addCircleMarkers(radius = ~log(total_access), 
                  weight = 1, 
                  color = hirmeos_blue,
