@@ -55,7 +55,6 @@ eu_blue <- '#094E97'
 sidebar_blue <- "#3A80A7"
 header_blue <- "#408EBA"
 
-
 # Import local data and tidy------------------------------------------------------------------------------
 
 metrics_data <- read_csv("data/metrics.csv") %>% 
@@ -80,8 +79,14 @@ country_geodata <- read_csv("data/country_centroids.csv") %>%
          country_code =iso_a2, 
          longitude = Longitude, 
          latitude = Latitude) %>% # source: https://worldmap.harvard.edu/data/geonode:country_centroids_az8
-mutate(longitude = ifelse(country_name == "France", 2.61, longitude), 
-       latitude = ifelse(country_name == "France", 46.46, latitude))
+mutate(longitude = case_when(country_name == "France" ~ 2.61, # there are a few countries which we need to manually edit
+                             country_name == "Kiribati" ~ 173.00,
+                             country_name == "Fiji" ~ 178.2,
+                             TRUE ~ longitude), 
+       latitude = case_when(country_name == "France" ~ 46.46, 
+                            country_name == "Kiribati" ~ 1.44,
+                            country_name == "Fiji" ~ -17.76,
+                            TRUE ~ latitude))
 
 all_data <- metrics_data %>%
   left_join(meta_data, by = c("work_uri" = "work_uri")) %>% 
@@ -103,20 +108,16 @@ all_data <- metrics_data %>%
                                "No info", 
                                country_name)) %>% 
   # this step needs to be fixed either with regex, or by reference to the OPERAS measures webpage
-  mutate(measure = case_when(measure_id == "https://metrics.operas-eu.org/classics-library/sessions/v1" ~ "sessions",
-                             measure_id == "https://metrics.operas-eu.org/google-books/views/v1" ~ "views",
-                             measure_id == "https://metrics.operas-eu.org/oapen/downloads/v1" ~ "downloads",
-                             measure_id == "https://metrics.operas-eu.org/obp-html/sessions/v1" ~ "sessions",
-                             measure_id == "https://metrics.operas-eu.org/obp-pdf/sessions/v1"  ~ "sessions", 
-                             measure_id == "https://metrics.operas-eu.org/obp/downloads/v1" ~ "downloads",
-                             measure_id == "https://metrics.operas-eu.org/open-edition/downloads/v1" ~ "downloads",
-                             measure_id == "https://metrics.operas-eu.org/world-reader/users/v1" ~ "users")) %>% 
+  mutate(platform_measure = substr(measure_id, start = 31, stop = nchar(measure_id))) %>% 
+  separate(col = platform_measure, into = c("platform", "measure", "version"), sep = "/") %>% 
+    mutate(platform = str_replace(platform, "-", " ")) %>%
+  mutate(platform_measure = paste0(platform, ": ", measure)) %>% 
   mutate(yq = as.yearqtr(timestamp.x)) %>%  # We add year-quarters for the readership dates
   mutate(title_abbr = ifelse(nchar(title) > 125,
                              paste0(substr(title, start = 1, stop = 122), "..."),
                              title)) # Some titles are outrageously verbose; we tidy those here
 
-# Pre-processed data (non-interactive)------------------------------------------------------------------
+# Pre-processed data (non-interactive)-------------------------------------------------------------------------------
 # Have some data pre-processed and ready to go here, so that the entire datafile doesn't need uploading
 # each time someone uses the app. 
 
@@ -173,9 +174,9 @@ p2 <- p2 + scale_y_continuous(limits = c(0, 1.5*max(pull(countries_top_10, count
 # Grouping metrics by measure and date, and creating a column plot over time
 
 static_metrics_data <- all_data %>%
-  filter(!is.na(measure)) %>%
-  select(measure, value.x, yq) %>%
-  group_by(measure, yq) %>% 
+  filter(!is.na(platform_measure)) %>%
+  select(platform_measure, value.x, yq) %>%
+  group_by(platform_measure, yq) %>% 
   summarise(value = sum(value.x))
 
 total_access_static <- static_metrics_data %>% 
@@ -184,23 +185,29 @@ total_access_static <- static_metrics_data %>%
   prettyNum(big.mark = ",")
 
 measures <- static_metrics_data %>%
-  pull(measure) %>% 
+  pull(platform_measure) %>% 
   unique()
 
-p1 <- ggplot(static_metrics_data, mapping = aes(x = yq, y = value))
-p1 <- p1 + geom_col(aes(fill = measure))
-p1 <- p1 + theme_minimal()
-p1 <- p1 + scale_fill_manual(values = c("downloads" = brewer.pal(8, "YlGnBu")[5],
-                                        "sessions" = brewer.pal(8, "YlGnBu")[6],
-                                        "users" = brewer.pal(8, "YlGnBu")[7], 
-                                        "views" = brewer.pal(8, "YlGnBu")[8]))
-p1 <- p1 + scale_y_continuous(labels = comma)
-p1 <- p1 + ylab("")
-p1 <- p1 + xlab("")
-p1 <- p1 + scale_x_yearqtr(format = "%Y-Q%q")
-#p1 <- p1 + theme(legend.title = element_blank())
+quarterly_plot <- function(data){
+  p1 <- ggplot(data, mapping = aes(x = yq, y = value))
+  p1 <- p1 + geom_col(aes(fill = platform_measure))
+  p1 <- p1 + theme_minimal()
+  p1 <- p1 + scale_color_brewer(palette = "RdYlBu", aesthetics = "fill")
+  # p1 <- p1 + scale_fill_discrete(palette = brewer.pal(9, "YlGnBu"))
+  # p1 <- p1 + scale_fill_manual(values = c("downloads" = brewer.pal(8, "YlGnBu")[5],
+  #                                         "sessions" = brewer.pal(8, "YlGnBu")[6],
+  #                                         "users" = brewer.pal(8, "YlGnBu")[7], 
+  #                                         "views" = brewer.pal(8, "YlGnBu")[8]))
+  p1 <- p1 + scale_y_continuous(labels = comma)
+  p1 <- p1 + ylab("")
+  p1 <- p1 + xlab("")
+  p1 <- p1 + scale_x_yearqtr(format = "%Y-Q%q")
+  #p1 <- p1 + theme(legend.title = element_blank())
+  
+  return(p1)
+}
 
-
+p1 <- quarterly_plot(static_metrics_data)
 
 
 #---- The User Interface: Header and sidebar----------------------------------------------------------------------------
@@ -397,7 +404,7 @@ ui <- dashboardPage(
                     a(href = "https://metrics.operas-eu.org/measures", "here"),
                     "."),
                   
-                  checkboxGroupInput(inputId = "metric2",choices = measures,
+                  checkboxGroupInput(inputId = "metric2",choices =  measures,
                                      selected = measures, label = "Select measure"
                   ),
                   plotOutput("monthly_access"),
@@ -443,9 +450,9 @@ server <- function(input, output) {
   
   #---- Summary tab: static features-----------------
   output$metrics_table_all <- renderTable({static_metrics_data %>% 
-      group_by(measure) %>% 
+      group_by(platform_measure) %>% 
       summarise(Value = prettyNum(sum(value), big.mark = ",")) %>% 
-      rename(Measure = measure)},
+      rename(Measure = platform_measure)},
       digits = 0, 
       align = "cr"
   )
@@ -490,6 +497,7 @@ server <- function(input, output) {
       prettyNum(big.mark = ",") %>%
       valueBox( 
         subtitle = "Total Access", 
+        icon = icon("book-reader"),
         color = "teal")
   })
   
@@ -508,36 +516,37 @@ server <- function(input, output) {
   
   output$metrics_table <- renderTable({
     title_data() %>%   
-      group_by(measure)%>%
+      group_by(platform_measure)%>%
       summarise(value = prettyNum(sum(value.x),
                                   big.mark = ",")) %>%
-      rename(metric = measure)
+      rename(metric = platform_measure)
   }, 
   align = "cr", digits = 0
   )
   
   output$monthly_access <- renderPlot({
     this_data <- title_data() %>% 
-      filter(measure %in% input$metric2) %>% 
-      group_by(measure, yq)%>%
-      summarise(values = sum(value.x)) %>%
-      arrange(yq, measure) 
+      filter(platform_measure %in% input$metric2) %>% 
+      group_by(platform_measure, yq)%>%
+      summarise(value = sum(value.x)) %>%
+      arrange(yq, platform_measure) 
     p <- ""
-    if(dim(this_data)[1] > 0){
-      p <- ggplot(this_data, mapping = aes(x = yq, y = values))
-      p <- p + geom_col(aes(fill = measure))
-      p <- p + theme_minimal()
-      p <- p + scale_fill_manual(values = c("downloads" = brewer.pal(8, "YlGnBu")[5],
-                                            "sessions" = brewer.pal(8, "YlGnBu")[6],
-                                            "users" = brewer.pal(8, "YlGnBu")[7], 
-                                            "views" = brewer.pal(8, "YlGnBu")[8]))
-      p <- p + scale_y_continuous(labels = comma)
-      p <- p + ggtitle("Readership over time")
-      p <- p + ylab("")
-      p <- p + xlab("")
-      p <- p + scale_x_yearqtr(format = "%Y-Q%q")
-      
-    }
+     if(dim(this_data)[1] > 0){
+       p <- quarterly_plot(this_data)}
+    #   p <- ggplot(this_data, mapping = aes(x = yq, y = values))
+    #   p <- p + geom_col(aes(fill = measure))
+    #   p <- p + theme_minimal()
+    #   p <- p + scale_fill_manual(values = c("downloads" = brewer.pal(8, "YlGnBu")[5],
+    #                                         "sessions" = brewer.pal(8, "YlGnBu")[6],
+    #                                         "users" = brewer.pal(8, "YlGnBu")[7], 
+    #                                         "views" = brewer.pal(8, "YlGnBu")[8]))
+    #   p <- p + scale_y_continuous(labels = comma)
+    #   p <- p + ggtitle("Readership over time")
+    #   p <- p + ylab("")
+    #   p <- p + xlab("")
+    #   p <- p + scale_x_yearqtr(format = "%Y-Q%q")
+    #   
+    # }
     return(p) #consider return(ggplotly(p)) for interactivity, if we can get it to work
     # might need an API to publish plotly charts
   })
@@ -587,8 +596,8 @@ server <- function(input, output) {
              !is.na(longitude))%>%
       group_by(country_name) %>%
       summarise(total_access = sum(value.x),
-                longitude = mean(longitude, na.rm = TRUE),
-                latitude = mean(latitude, na.rm = TRUE)) # all longitude/latitude values should be the same for a given country
+                longitude = max(longitude),
+                latitude = max(latitude)) # all longitude/latitude values should be the same for a given country
   }) 
   
   

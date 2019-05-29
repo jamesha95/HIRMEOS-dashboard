@@ -10,7 +10,7 @@ library(jsonlite) # for translating the JSON results into something readable
 
 # Here's a quick function to access passwords without needing to put them in the script
 my_secrets <- function() {
-  path <- "/Users/jamesha/Desktop/key.csv" #either jaha or jamesha depending on device
+  path <- "/Users/jaha/Desktop/key.csv" #either jaha or jamesha depending on device
   if (!file.exists(path)) {
     stop("Can't find secret file: '", path, "'")
   }
@@ -63,7 +63,7 @@ retrieve_altmetrics <- function(uris, key){
       as_tibble()
     calls_list[[i]] <- metrics # don't forget the double [[]] when indexing a list, not a vector
     message("ok ", appendLF = FALSE) # this prints dots on the same line
-    Sys.sleep(time = 0.2) # this would be polite to the metrics server, but we want the data asap
+    Sys.sleep(time = 0) # this would be polite to the metrics server, but we want the data asap
   }
   
   combined_data <- bind_rows(calls_list)
