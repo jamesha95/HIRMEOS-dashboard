@@ -8,9 +8,9 @@ list.of.packages <- c("ggplot2", # for plotting
                       "shiny", # for the shiny app features
                       "tidyverse", # for data wrangling
                       "rcrossref", # for getting metadata like title, authorship from DOI
-                #      "plotly", # for making interactive plots
+                      #      "plotly", # for making interactive plots
                       "shinyWidgets", # extends the number of shiny input options
-                #      "countrycode",  # this was used to identify countries from ISO code, but instead we have a .csv of correspondences now
+                      #      "countrycode",  # this was used to identify countries from ISO code, but instead we have a .csv of correspondences now
                       "scales", # for formatting certain data (such as percentages) nicely
                       "zoo", # for formatting dates as year-quarters
                       "lubridate", # for working with dates
@@ -67,6 +67,8 @@ meta_data <- read_csv("data/metadata.csv") %>%
 altmetrics_data <- read_csv("data/altmetrics.csv") %>% 
   as_tibble()
 
+ 
+
 # OPERASurl <- "https://metrics.operas-eu.org/measures"
 #  measures <- OPERASurl %>%
 #    read_html() %>%
@@ -79,43 +81,65 @@ country_geodata <- read_csv("data/country_centroids.csv") %>%
          country_code =iso_a2, 
          longitude = Longitude, 
          latitude = Latitude) %>% # source: https://worldmap.harvard.edu/data/geonode:country_centroids_az8
-mutate(longitude = case_when(country_name == "France" ~ 2.61, # there are a few countries which we need to manually edit
-                             country_name == "Kiribati" ~ 173.00,
-                             country_name == "Fiji" ~ 178.2,
-                             TRUE ~ longitude), 
-       latitude = case_when(country_name == "France" ~ 46.46, 
-                            country_name == "Kiribati" ~ 1.44,
-                            country_name == "Fiji" ~ -17.76,
-                            TRUE ~ latitude))
+  mutate(longitude = case_when(country_name == "France" ~ 2.61, # there are a few countries which we need to manually edit
+                               country_name == "Kiribati" ~ 173.00,
+                               country_name == "Fiji" ~ 178.2,
+                               TRUE ~ longitude), 
+         latitude = case_when(country_name == "France" ~ 46.46, 
+                              country_name == "Kiribati" ~ 1.44,
+                              country_name == "Fiji" ~ -17.76,
+                              TRUE ~ latitude))
+
+
+
 
 all_data <- metrics_data %>%
+  
   left_join(meta_data, by = c("work_uri" = "work_uri")) %>% 
-  left_join(altmetrics_data, by = c("work_uri" = "URI")) %>%
+ # left_join(altmetrics_data, by = c("work_uri" = "URI")) %>% We should keep altmetrics separate
+  
   filter(type %in% c("monograph", "book")) %>%  # for now, we will focus on book & monograph data. If we allow chapters,
   # we'll need to generalise the search/filters in the UI to select for books/monograph/chapters
-  select(measure_id, # this tells us what sort of metric we're looking at
-         value.x, # the value of the metric   
-         timestamp.x, # this tells us what date
+  
+  select(work_uri,
+         measure_id, # this tells us what sort of metric we're looking at
+         value, # the value of the metric   
+         timestamp, # this tells us what date
          country_uri, # this tells us what country
          title, # this is the title
          publisher) %>%  # together, these are the data we'll analyse for now
   # later we will include events (altmetrics)
   mutate(country_code = ifelse(is.na(country_uri), 
-                                     "missing",
-                                     substr(country_uri, start = 21, stop = 22))) %>%
+                               "missing",
+                               substr(country_uri, start = 21, stop = 22))) %>%
   left_join(country_geodata, by = "country_code") %>%
   mutate(country_name = ifelse(is.na(country_name), 
                                "No info", 
                                country_name)) %>% 
   # this step needs to be fixed either with regex, or by reference to the OPERAS measures webpage
+  
   mutate(platform_measure = substr(measure_id, start = 31, stop = nchar(measure_id))) %>% 
   separate(col = platform_measure, into = c("platform", "measure", "version"), sep = "/") %>% 
-    mutate(platform = str_replace(platform, "-", " ")) %>%
+  mutate(platform = str_replace(platform, "-", " ")) %>%
   mutate(platform_measure = paste0(platform, ": ", measure)) %>% 
-  mutate(yq = as.yearqtr(timestamp.x)) %>%  # We add year-quarters for the readership dates
-  mutate(title_abbr = ifelse(nchar(title) > 125,
-                             paste0(substr(title, start = 1, stop = 122), "..."),
+  
+  # allocating readership to quarters
+  
+  mutate(yq = as.yearqtr(timestamp)) %>%  # We add year-quarters for the readership dates
+  mutate(title_abbr = ifelse(nchar(title) > 100,
+                             paste0(substr(title, start = 1, stop = 97), "..."),
                              title)) # Some titles are outrageously verbose; we tidy those here
+
+demo_data <- read_csv("data/obp-hirmeos-events.csv") %>%
+  mutate(work_uri = paste0("info:doi:", work_uri)) %>%
+  left_join(meta_data, by = c("work_uri" = "work_uri")) %>%
+  mutate(platform_measure = substr(measure_id, start = 40, stop = nchar(measure_id))) %>% 
+  separate(col = platform_measure, into = c("platform", "measure", "version"), sep = "/") %>% 
+  mutate(platform = str_replace(platform, "-", " ")) %>%
+  mutate(platform_measure = paste0(platform, ": ", measure)) %>% 
+  mutate(title_abbr = ifelse(nchar(title) > 100,
+                             paste0(substr(title, start = 1, stop = 97), "..."),
+                             title))
 
 # Pre-processed data (non-interactive)-------------------------------------------------------------------------------
 # Have some data pre-processed and ready to go here, so that the entire datafile doesn't need uploading
@@ -133,10 +157,10 @@ no_titles <- prettyNum(length(titles), big.mark = ",")
 # Number of countries and readership by country for the dataset, and a barplot for top 10 countries
 
 countries <- all_data %>% 
-  filter(!is.na(value.x)) %>% 
-  select(country_name, value.x) %>%
+  filter(!is.na(value)) %>% 
+  select(country_name, value) %>%
   group_by(country_name) %>% 
-  summarise(country_access = sum(value.x))
+  summarise(country_access = sum(value))
 
 no_countries_reached_static <- countries %>%
   pull(country_name) %>% 
@@ -175,9 +199,9 @@ p2 <- p2 + scale_y_continuous(limits = c(0, 1.5*max(pull(countries_top_10, count
 
 static_metrics_data <- all_data %>%
   filter(!is.na(platform_measure)) %>%
-  select(platform_measure, value.x, yq) %>%
+  select(platform_measure, value, yq) %>%
   group_by(platform_measure, yq) %>% 
-  summarise(value = sum(value.x))
+  summarise(value = sum(value))
 
 total_access_static <- static_metrics_data %>% 
   pull(value) %>% 
@@ -359,7 +383,7 @@ ui <- dashboardPage(
                        # First interactive content: choosing book by title
                        wellPanel(pickerInput(inputId = "title", 
                                              label = "Choose a title or select all", 
-                                             selected = titles,
+                                             selected = titles[1],
                                              choices = titles,
                                              options = pickerOptions(actionsBox = TRUE,
                                                                      liveSearch = TRUE,
@@ -391,10 +415,10 @@ ui <- dashboardPage(
                 
                 #table of access by different metrics
                 
-                       box(
-                         tableOutput("metrics_table"),
-                         width = 4
-                       )
+                box(
+                  tableOutput("metrics_table"),
+                  width = 4
+                )
               ),
               
               fluidRow(
@@ -408,7 +432,9 @@ ui <- dashboardPage(
                                      selected = measures, label = "Select measure"
                   ),
                   plotOutput("monthly_access"),
-                  width = 12
+                  width = 12,
+                  plotOutput("eventsplot", height = "200px")
+                  
                 )
               )
       ),
@@ -418,7 +444,7 @@ ui <- dashboardPage(
       tabItem(tabName = "Metrics_by_country",
               wellPanel(pickerInput(inputId = "title2", 
                                     label = "Choose a title or select all", 
-                                   # selected = titles,  # start with all or none selected
+                                    # selected = titles,  # start with all or none selected
                                     choices = titles,
                                     options = pickerOptions(actionsBox = TRUE,
                                                             liveSearch = TRUE,
@@ -426,11 +452,11 @@ ui <- dashboardPage(
                                     
                                     multiple = TRUE)
               ),
-             fluidRow(
-               box(leafletOutput("map"),
-                   width = 12),
-             p()
-             )
+              fluidRow(
+                box(leafletOutput("map"),
+                    width = 12),
+                p()
+              )
               
               
               
@@ -474,8 +500,16 @@ server <- function(input, output) {
   title_data <- reactive({
     all_data %>%
       filter(title_abbr %in% input$title, # this filters for the chosen title
-             !is.na(value.x)) # this removes any measure with a missing value
+             !is.na(value)) # this removes any measure with a missing value
   }) # note that title_data() is an expression that retrieves a dataset, so must be called like a function 
+  
+  title_altimetrics <- reactive({
+    demo_data %>%  # this will need to be replaced with "altmetric_data" in future
+      filter(title_abbr %in% input$title) # this filters for the chosen title
+            
+  }) 
+  
+  
   
   
   output$no_titles_selected <- renderValueBox({
@@ -492,7 +526,7 @@ server <- function(input, output) {
   
   output$total_access <- renderValueBox({
     title_data() %>% # note that title_data() is an expression that retrieves a dataset, hence the () 
-      pull(value.x) %>% 
+      pull(value) %>% 
       sum() %>% 
       prettyNum(big.mark = ",") %>%
       valueBox( 
@@ -517,7 +551,7 @@ server <- function(input, output) {
   output$metrics_table <- renderTable({
     title_data() %>%   
       group_by(platform_measure)%>%
-      summarise(value = prettyNum(sum(value.x),
+      summarise(value = prettyNum(sum(value),
                                   big.mark = ",")) %>%
       rename(metric = platform_measure)
   }, 
@@ -528,35 +562,21 @@ server <- function(input, output) {
     this_data <- title_data() %>% 
       filter(platform_measure %in% input$metric2) %>% 
       group_by(platform_measure, yq)%>%
-      summarise(value = sum(value.x)) %>%
+      summarise(value = sum(value)) %>%
       arrange(yq, platform_measure) 
     p <- ""
-     if(dim(this_data)[1] > 0){
-       p <- quarterly_plot(this_data)}
-    #   p <- ggplot(this_data, mapping = aes(x = yq, y = values))
-    #   p <- p + geom_col(aes(fill = measure))
-    #   p <- p + theme_minimal()
-    #   p <- p + scale_fill_manual(values = c("downloads" = brewer.pal(8, "YlGnBu")[5],
-    #                                         "sessions" = brewer.pal(8, "YlGnBu")[6],
-    #                                         "users" = brewer.pal(8, "YlGnBu")[7], 
-    #                                         "views" = brewer.pal(8, "YlGnBu")[8]))
-    #   p <- p + scale_y_continuous(labels = comma)
-    #   p <- p + ggtitle("Readership over time")
-    #   p <- p + ylab("")
-    #   p <- p + xlab("")
-    #   p <- p + scale_x_yearqtr(format = "%Y-Q%q")
-    #   
-    # }
-    return(p) #consider return(ggplotly(p)) for interactivity, if we can get it to work
-    # might need an API to publish plotly charts
+    if(dim(this_data)[1] > 0){
+      p <- quarterly_plot(this_data)}
+    
+    return(p) #consider return(ggplotly(p)) for interactivity, or ggvis
   })
   
   # Top country bar chart
   output$countries_barplot <- renderPlot({
     countries_top_10 <- title_data() %>% 
-      select(country_name, value.x) %>%
+      select(country_name, value) %>%
       group_by(country_name) %>% 
-      summarise(country_access = sum(value.x)) %>% 
+      summarise(country_access = sum(value)) %>% 
       arrange(desc(country_access)) %>%
       top_n(10, wt = country_access)
     
@@ -586,16 +606,49 @@ server <- function(input, output) {
     
   })
   
+  # this is a pretty rudimentary attempt at an event timeline
+  output$eventsplot <- renderPlot({
+    if(dim(title_altimetrics())[1] >0){
+      times <- title_data() %>%
+        pull(timestamp)
+      
+    title_altimetrics() %>% 
+      ggplot() +
+      geom_segment(
+        aes(x = min(c(min(times), min(timestamp))) - 10
+            , xend = max(c(max(times), max(timestamp))) + 20
+            , y = 0
+            , yend = 0)
+        , arrow = arrow()
+      ) +
+      geom_linerange(mapping = aes(x = timestamp
+                                   , ymin = -1
+                                   , ymax = 1,
+                                   colour = platform_measure)) +  # change this once we name the measures 
+      scale_colour_brewer(palette = "Spectral", aesthetics = "colour") +
+      xlab("Event date") +
+      theme_minimal() +
+      theme(axis.text.y = element_blank()
+            , axis.title.y = element_blank()
+            , panel.grid.major.y = element_blank()
+            , panel.grid.minor.y = element_blank()
+      ) }
+    
+  })
+  
+  
+  
+  
   ##---- Leaflet tab --------------------------------------------------------------------
   
   # Map of the world
   map_data <- reactive({
     all_data %>%
       filter(title_abbr %in% input$title2, # this filters for the chosen title
-             !is.na(value.x),
+             !is.na(value),
              !is.na(longitude))%>%
       group_by(country_name) %>%
-      summarise(total_access = sum(value.x),
+      summarise(total_access = sum(value),
                 longitude = max(longitude),
                 latitude = max(latitude)) # all longitude/latitude values should be the same for a given country
   }) 
@@ -604,8 +657,8 @@ server <- function(input, output) {
   output$map <- renderLeaflet({
     leaflet(options = leafletOptions(minZoom = 1, 
                                      worldCopyJump = TRUE # This allows continuous panning left-right
-                                     )
-            ) %>%
+    )
+    ) %>%
       addProviderTiles(providers$Stamen.TonerLite,
                        options = providerTileOptions(nowrap = FALSE)
       ) %>% 
@@ -619,11 +672,11 @@ server <- function(input, output) {
     leafletProxy("map", data = map_data()) %>%
       clearMarkers() %>%
       addCircleMarkers(radius = ~log(total_access), 
-                 weight = 1, 
-                 color = hirmeos_blue,
-                 fillColor = hirmeos_blue, 
-                 fillOpacity = 0.7, 
-                 popup = ~paste0(country_name, ": ", prettyNum(total_access, big.mark = ","))
+                       weight = 1, 
+                       color = hirmeos_blue,
+                       fillColor = hirmeos_blue, 
+                       fillOpacity = 0.7, 
+                       popup = ~paste0(country_name, ": ", prettyNum(total_access, big.mark = ","))
       )
   })
   
