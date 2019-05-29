@@ -445,6 +445,7 @@ ui <- dashboardPage(
               wellPanel(pickerInput(inputId = "title2", 
                                     label = "Choose a title or select all", 
                                     # selected = titles,  # start with all or none selected
+# none is the better option, because dots don't load by default until someone interacts with the map
                                     choices = titles,
                                     options = pickerOptions(actionsBox = TRUE,
                                                             liveSearch = TRUE,
@@ -625,7 +626,9 @@ server <- function(input, output) {
                                    , ymin = -1
                                    , ymax = 1,
                                    colour = platform_measure)) +  # change this once we name the measures 
-      scale_colour_brewer(palette = "Spectral", aesthetics = "colour") +
+     # we will need to pick a wider palette eventually, as YlGnBu can only handle up to 9 groups
+       scale_colour_brewer(palette = "YlGnBu", aesthetics = "colour") +
+      
       xlab("Event date") +
       theme_minimal() +
       theme(axis.text.y = element_blank()
