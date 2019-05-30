@@ -620,7 +620,6 @@ server <- function(input, output) {
             , xend = max(c(max(times), max(timestamp))) + 20
             , y = 0
             , yend = 0)
-        , arrow = arrow()
       ) +
       geom_linerange(mapping = aes(x = timestamp
                                    , ymin = -1
