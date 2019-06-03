@@ -176,23 +176,27 @@ countries_top_10 <- countries_top_10 %>%
   mutate(country_name = factor(x = pull(countries_top_10, country_name), 
                                levels = pull(countries_top_10, country_name),
                                ordered = T),
-         country_percent = percent(round(country_access/sum(country_access), 2)))
+         country_percent = percent(country_access/sum(country_access), 1))
 
-p2 <- ggplot(countries_top_10, mapping = aes(x = country_name, y = country_access))
-p2 <- p2 + geom_bar(stat = "identity", 
-                    fill = hirmeos_blue)
-p2 <- p2 + geom_text(aes(label = paste0(prettyNum(country_access, big.mark = ","),
-                                        "  (",
-                                        country_percent,
-                                        ")")),
-                     hjust = -0.1)
-p2 <- p2 + coord_flip()
-p2 <- p2 + theme_void()
-p2 <- p2 + theme(axis.text.y = element_text(), 
-                 title = element_blank())
-p2 <- p2 + scale_x_discrete(limits = rev(levels(pull(countries_top_10,country_name))))
-p2 <- p2 + scale_y_continuous(limits = c(0, 1.5*max(pull(countries_top_10, country_access))))
+top_10_countries <- function(data){
+  p2 <- ggplot(data, mapping = aes(x = country_name, y = country_access))
+  p2 <- p2 + geom_bar(stat = "identity", 
+                      fill = hirmeos_blue)
+  p2 <- p2 + geom_text(aes(label = paste0(prettyNum(country_access, big.mark = ","),
+                                          "  (",
+                                          country_percent,
+                                          ")")),
+                       hjust = -0.1)
+  p2 <- p2 + coord_flip()
+  p2 <- p2 + theme_void()
+  p2 <- p2 + theme(axis.text.y = element_text(), 
+                   title = element_blank())
+  p2 <- p2 + scale_x_discrete(limits = rev(levels(pull(data,country_name))))
+  p2 <- p2 + scale_y_continuous(limits = c(0, 1.5*max(pull(data, country_access))))
+  return(p2)
+}
 
+p2 <- top_10_countries(countries_top_10)
 
 
 # Grouping metrics by measure and date, and creating a column plot over time
@@ -212,11 +216,19 @@ measures <- static_metrics_data %>%
   pull(platform_measure) %>% 
   unique()
 
-quarterly_plot <- function(data){
+quarterly_plot <- function(data, event_data = NULL){
   p1 <- ggplot(data, mapping = aes(x = yq, y = value))
   p1 <- p1 + geom_col(aes(fill = platform_measure))
+  if(!is.null(event_data)){
+    last_q <- max(event_data)
+    first_q <- min(event_data)
+  p1 <- p1 + scale_x_continuous(expand = c(min(first_q, data$yq), Sys.yearqtr()))
+  } # this is to ensure that the x axis contains the same dates as the event plot beneath
   p1 <- p1 + theme_minimal()
   p1 <- p1 + scale_color_brewer(palette = "RdYlBu", aesthetics = "fill")
+  p1 <- p1 + theme(legend.position = "top",
+                   axis.text.x = element_text(angle = 90, hjust = 1, size = 12),
+                   axis.text.y = element_text(size = 12))
   # p1 <- p1 + scale_fill_discrete(palette = brewer.pal(9, "YlGnBu"))
   # p1 <- p1 + scale_fill_manual(values = c("downloads" = brewer.pal(8, "YlGnBu")[5],
   #                                         "sessions" = brewer.pal(8, "YlGnBu")[6],
@@ -262,10 +274,7 @@ ui <- dashboardPage(
         solidHeader = TRUE
       ),
       
-      
-      br(),
-      br(),
-      br(),
+
       
       box(
         a(href = 'https://operas.hypotheses.org/',
@@ -417,16 +426,17 @@ ui <- dashboardPage(
                 
                 box(
                   tableOutput("metrics_table"),
-                  width = 4
+                  width = 4,
+                  br(),
+                  p("Descriptions of each measure can be found ",
+                    a(href = "https://metrics.operas-eu.org/measures", "here"),
+                    ".")
                 )
               ),
               
               fluidRow(
                 
                 box(
-                  p("Descriptions of each measure can be found ",
-                    a(href = "https://metrics.operas-eu.org/measures", "here"),
-                    "."),
                   
                   checkboxGroupInput(inputId = "metric2",choices =  measures,
                                      selected = measures, label = "Select measure"
@@ -567,66 +577,59 @@ server <- function(input, output) {
       arrange(yq, platform_measure) 
     p <- ""
     if(dim(this_data)[1] > 0){
-      p <- quarterly_plot(this_data)}
+      
+      times <- title_altimetrics() %>% # I want the x axis to be as wide as the events chart below
+        mutate(yq = as.yearqtr(timestamp)) %>% 
+        pull(yq)
+      
+      p <- quarterly_plot(this_data, times)}
     
     return(p) #consider return(ggplotly(p)) for interactivity, or ggvis
   })
   
   # Top country bar chart
   output$countries_barplot <- renderPlot({
-    countries_top_10 <- title_data() %>% 
+    chart_data <- title_data() %>% 
       select(country_name, value) %>%
       group_by(country_name) %>% 
       summarise(country_access = sum(value)) %>% 
       arrange(desc(country_access)) %>%
       top_n(10, wt = country_access)
     
-    countries_top_10 <- countries_top_10 %>%
-      mutate(country_name = factor(x = pull(countries_top_10, country_name), 
-                                   levels = pull(countries_top_10, country_name),
+    chart_data <- chart_data %>%
+      mutate(country_name = factor(x = pull(chart_data, country_name), 
+                                   levels = pull(chart_data, country_name),
                                    ordered = T),
              country_percent = percent(country_access/sum(country_access),accuracy = 1))
-    p2 <- "No titles selected"
-    if(dim(countries_top_10)[1] > 0){
-      p2 <- ggplot(countries_top_10, mapping = aes(x = country_name, y = country_access))
-      p2 <- p2 + geom_bar(stat = "identity", 
-                          fill = hirmeos_blue)
-      p2 <- p2 + geom_text(aes(label = paste0(prettyNum(country_access, big.mark = ","),
-                                              "  (",
-                                              country_percent,
-                                              ")")),
-                           hjust = -0.1)
-      p2 <- p2 + coord_flip()
-      p2 <- p2 + theme_void()
-      p2 <- p2 + theme(axis.text.y = element_text(), 
-                       title = element_blank())
-      p2 <- p2 + scale_x_discrete(limits = rev(levels(pull(countries_top_10,country_name))))
-      p2 <- p2 + scale_y_continuous(limits = c(0, 1.5*max(pull(countries_top_10, country_access))))
-    }
-    return(p2)
     
+    if(dim(chart_data)[1] > 0){
+      top_10_countries(chart_data)
+    }
   })
   
   # this is a pretty rudimentary attempt at an event timeline
   output$eventsplot <- renderPlot({
     if(dim(title_altimetrics())[1] >0){
-      times <- title_data() %>%
+      times <- title_data() %>% # I want the x axis to be as wide as the chart above
         pull(timestamp)
       
     title_altimetrics() %>% 
       ggplot() +
       geom_segment(
-        aes(x = min(c(min(times), min(timestamp))) - 10
-            , xend = max(c(max(times), max(timestamp))) + 20
+        aes(x = min(c(min(times), min(timestamp))) - 10   # I want the x axis to contain all the events
+            , xend = as.POSIXct(Sys.Date()) + 20
             , y = 0
             , yend = 0)
+            , colour = "black"
+            , size = 0.5
       ) +
       geom_linerange(mapping = aes(x = timestamp
                                    , ymin = -1
-                                   , ymax = 1,
-                                   colour = platform_measure)) +  # change this once we name the measures 
+                                   , ymax = 1
+                                   , colour = platform_measure)) +  # change this once we name the measures 
+ #))+
      # we will need to pick a wider palette eventually, as YlGnBu can only handle up to 9 groups
-       scale_colour_brewer(palette = "YlGnBu", aesthetics = "colour") +
+       scale_colour_brewer(palette = "Dark2", aesthetics = "colour") +
       
       xlab("Event date") +
       theme_minimal() +
@@ -634,6 +637,8 @@ server <- function(input, output) {
             , axis.title.y = element_blank()
             , panel.grid.major.y = element_blank()
             , panel.grid.minor.y = element_blank()
+            , legend.position = "bottom"
+            
       ) }
     
   })
@@ -673,7 +678,7 @@ server <- function(input, output) {
     
     leafletProxy("map", data = map_data()) %>%
       clearMarkers() %>%
-      addCircleMarkers(radius = ~log(total_access), 
+      addCircleMarkers(radius = ~log(total_access) + 3, # The +3 helps to make small circles clickable
                        weight = 1, 
                        color = hirmeos_blue,
                        fillColor = hirmeos_blue, 
