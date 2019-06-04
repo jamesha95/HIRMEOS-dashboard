@@ -130,7 +130,10 @@ all_data <- metrics_data %>%
                              paste0(substr(title, start = 1, stop = 97), "..."),
                              title)) # Some titles are outrageously verbose; we tidy those here
 
-demo_data <- read_csv("data/obp-hirmeos-events.csv") %>%
+
+  
+wrangle_event_data <- function(data){
+  data %>% 
   mutate(work_uri = paste0("info:doi:", work_uri)) %>%
   left_join(meta_data, by = c("work_uri" = "work_uri")) %>%
   mutate(platform_measure = substr(measure_id, start = 40, stop = nchar(measure_id))) %>% 
@@ -140,6 +143,13 @@ demo_data <- read_csv("data/obp-hirmeos-events.csv") %>%
   mutate(title_abbr = ifelse(nchar(title) > 100,
                              paste0(substr(title, start = 1, stop = 97), "..."),
                              title))
+}
+
+# THIS IS A TEMPORARY FEATURE FOR THE DEMONSTRATION ONLY
+demo_data <- read_csv("data/obp-hirmeos-events.csv") %>%
+  wrangle_event_data()
+# Replace with: event_data <- wrangle_event_data(altmetric_data)
+
 
 # Pre-processed data (non-interactive)-------------------------------------------------------------------------------
 # Have some data pre-processed and ready to go here, so that the entire datafile doesn't need uploading
