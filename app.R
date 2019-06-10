@@ -2,45 +2,26 @@
 
 #---- Set up ------------------------------------------------------------------------------
 
-# Here's the packages that will be needed
-
-list.of.packages <- c("ggplot2", # for plotting
-                      "shiny", # for the shiny app features
-                      "tidyverse", # for data wrangling
-                      "rcrossref", # for getting metadata like title, authorship from DOI
-                      #      "plotly", # for making interactive plots
-                      "shinyWidgets", # extends the number of shiny input options
-                      #      "countrycode",  # this was used to identify countries from ISO code, but instead we have a .csv of correspondences now
-                      "scales", # for formatting certain data (such as percentages) nicely
-                      "zoo", # for formatting dates as year-quarters
-                      "lubridate", # for working with dates
-                      "RColorBrewer", # for making nice colour palettes 
-                      "shinydashboard", # for styling the shiny app as a dashboard easily
-                      "leaflet", # for the interactive map
-                      "rvest") # for getting the table of metrics from OPERAS
-
-
-# This code checks for these packages and installs them if they need installing
-
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
+# This code will install the necessary packages if you're running the script outside of Docker.
+# source("DockerConfig/requirements.R")
 
 # Load packages
 
-library(shiny)
+#library(shiny)
 library(shinydashboard)
 library(shinyWidgets)
 library(tidyverse)
 library(rcrossref)
 #library(plotly)
-library(shinyWidgets)
+#library(shinyWidgets)
 #library(countrycode)
 library(scales)
 library(zoo)
 library(lubridate)
 library(RColorBrewer)
 library(leaflet)
-library(rvest)
+library(rsconnect)
+#library(rvest)
 
 
 #We disable R's feature that automatically reads in strings as factors. In this work, strings are generally just strings
