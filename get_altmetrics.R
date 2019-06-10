@@ -2,7 +2,8 @@
 
 ##---- Set up ----
 
-# add code to check for packages before downloading them
+# Add code to check for existing altmetric data. We will eventually need to build a separate dashboard
+# for the publisher where they can easily add and retrieve data.
 
 library(tidyverse) # for manipulating data easily
 library(httr) # for accessing APIs within R

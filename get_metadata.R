@@ -3,6 +3,8 @@
 library(tidyverse)
 library(rcrossref)
 
+# Need to include a check for existing meta_data
+
 metrics_data <- read_csv("data/metrics.csv") %>% 
   as_tibble()
 

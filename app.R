@@ -388,7 +388,7 @@ ui <- dashboardPage(
                                              options = pickerOptions(actionsBox = TRUE,
                                                                      liveSearch = TRUE,
                                                                      virtualScroll = TRUE,
-                                                                     mobile = TRUE),
+                                                                     mobile = FALSE), # setting mobile = TRUE breaks the picker on computers
                                              
                                              multiple = TRUE)
                        ),
