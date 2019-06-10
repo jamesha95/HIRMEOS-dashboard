@@ -237,7 +237,7 @@ quarterly_plot <- function(data, event_data = NULL){
   p1 <- p1 + theme_minimal()
   p1 <- p1 + scale_color_brewer(palette = "RdYlBu", aesthetics = "fill")
   p1 <- p1 + theme(legend.position = "top",
-                   axis.text.x = element_text(angle = 90, hjust = 1, size = 12),
+                   axis.text.x = element_text(angle = 90, size = 12, vjust = 0.5),
                    axis.text.y = element_text(size = 12))
   # p1 <- p1 + scale_fill_discrete(palette = brewer.pal(9, "YlGnBu"))
   # p1 <- p1 + scale_fill_manual(values = c("downloads" = brewer.pal(8, "YlGnBu")[5],
@@ -406,7 +406,8 @@ ui <- dashboardPage(
                                              choices = titles,
                                              options = pickerOptions(actionsBox = TRUE,
                                                                      liveSearch = TRUE,
-                                                                     virtualScroll = TRUE),
+                                                                     virtualScroll = TRUE,
+                                                                     mobile = TRUE),
                                              
                                              multiple = TRUE)
                        ),
