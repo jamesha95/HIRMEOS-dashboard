@@ -10,10 +10,11 @@ RUN Rscript /tmp/requirements.R
 ENV USER rstudio
 
 
-## Copy your working files over
+## Copy your working files over. Alternatively, when writing the run command, you can
+## set them as volumes if you're happy to write back to your local files
 ## The $USER defaults to `rstudio` but you can change this at runtime
 COPY ./app.R /home/$USER/app.R
-COPY ./get_altmetrics.R /home/$USER/get_altmetrics.R
+## COPY ./get_altmetrics.R /home/$USER/get_altmetrics.R
 COPY ./get_metadata.R /home/$USER/get_metadata.R
 COPY ./data /home/$USER/data
 COPY ./www /home/$USER/www
