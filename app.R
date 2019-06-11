@@ -38,14 +38,29 @@ header_blue <- "#408EBA"
 
 # Import local data and tidy------------------------------------------------------------------------------
 
-metrics_data <- read_csv("data/metrics.csv") %>% 
+if (!file.exists("data/metrics.csv")){
+  warning("metrics.csv does not exist. Using demo data instead.")
+  metrics_path <- "data/demo_data/demo_metrics_small.csv"
+} else{metrics_path <- "data/metrics.csv"}
+
+if (!file.exists("data/metadata.csv")){
+  warning("metadata.csv does not exist. Using demo data instead.")
+  metadata_path <- "data/demo_data/demo_metadata_small.csv"
+} else{metadata_path <- "data/metadata.csv"}
+
+if (!file.exists("data/altmetrics.csv")){
+  warning("altmetrics.csv does not exist. Using demo data instead.")
+  altmetrics_path <- "data/demo_data/demo_altmetrics.csv"
+} else{altmetrics_path <- "data/altmetrics.csv"}
+
+metrics_data <- read_csv(metrics_path) %>% 
   as_tibble()
 
-meta_data <- read_csv("data/metadata.csv") %>% 
+meta_data <- read_csv(metadata_path) %>% 
   as_tibble() %>%
   mutate(work_uri = paste0("info:doi:", doi))
 
-altmetrics_data <- read_csv("data/altmetrics.csv") %>% 
+altmetrics_data <- read_csv(altmetrics_path) %>% 
   as_tibble()
 
  
@@ -55,7 +70,7 @@ altmetrics_data <- read_csv("data/altmetrics.csv") %>%
 #    read_html() %>%
 #  html_nodes(xpath = '//*[@id="root"]/div/section/section/main/div/div[2]/div/div/div/div/div/div[2]/div/div/div/div/div/table') %>%
 # html_table()
-# The OPERAS website has the table formatted using ant-table rather than table, which is very hard to extract. 
+# The OPERAS website has the table formatted using ant-table rather than table, which is hard to extract... 
 
 country_geodata <- read_csv("data/country_centroids.csv") %>%
   select(country_name = admin,
@@ -127,7 +142,7 @@ wrangle_event_data <- function(data){
 }
 
 # THIS IS A TEMPORARY FEATURE FOR THE DEMONSTRATION ONLY
-demo_data <- read_csv("data/obp-hirmeos-events.csv") %>%
+demo_data <- read_csv("data/demo_data/demo_altmetrics.csv") %>%
   wrangle_event_data()
 # Replace with: event_data <- wrangle_event_data(altmetric_data)
 

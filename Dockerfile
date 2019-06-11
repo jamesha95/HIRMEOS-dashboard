@@ -1,4 +1,4 @@
-FROM rocker/tidyverse:3.5.1
+FROM rocker/shiny-verse:3.5.1
 
 ## Copy requirements.R to container directory /tmp
 COPY ./DockerConfig/requirements.R /tmp/requirements.R 

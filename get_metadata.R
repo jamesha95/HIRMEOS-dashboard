@@ -2,6 +2,7 @@
 
 library(tidyverse)
 library(rcrossref)
+library(jsonlite)
 
 # Need to include a check for existing meta_data
 
@@ -22,4 +23,16 @@ titles <- external_metadata$data %>%
   as_tibble() %>% 
   select(doi, title, type, publisher) # Can add other variables of interest, such as author
 
+
+if (file.exists("data/all_crossref_data")){
+  warning("all_crossref_data already exists. Overwriting it.")
+}
+write_json(external_metadata$data, "data/all_crossref_data") # just saving this for later, since it took so long to call
+# we save it as a JSON file because they're flexible and can handle the nested lists in this data
+
+if (file.exists("data/metadata.csv")){
+  warning("metadata.csv already exists. Overwriting it.")
+}
 write_csv(titles, "data/metadata.csv")
+
+

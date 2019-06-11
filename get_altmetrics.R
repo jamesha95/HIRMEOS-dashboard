@@ -1,4 +1,4 @@
-# Here, we test accessing the Altmetrics API, and investigate the data it returns
+# Here, we test accessing the Altmetrics API, and investigate the data it returns.
 
 ##---- Set up ----
 
@@ -10,8 +10,8 @@ library(httr) # for accessing APIs within R
 library(jsonlite) # for translating the JSON results into something readable
 
 # Here's a quick function to access passwords without needing to put them in the script
-my_secrets <- function() {
-  path <- "/Users/jaha/Desktop/key.csv" #either jaha or jamesha depending on device
+my_secrets <- function(secret){
+  path <- paste0("secrets/", secret) # you should have a files with your email and password for the altmetrics API
   if (!file.exists(path)) {
     stop("Can't find secret file: '", path, "'")
   }
@@ -27,7 +27,7 @@ path <- "api/get_token"
 
 raw.token <- GET(url = url, 
                  path = path, 
-                 authenticate(user = "jamesha.v2.0@gmail.com", password = my_secrets(), type = "basic"))
+                 authenticate(user = my_secrets("email.csv"), password = my_secrets("password.csv"), type = "basic"))
 
 JWT <- content(x = raw.token, as = "text")
 
@@ -73,6 +73,14 @@ retrieve_altmetrics <- function(uris, key){
 
 my_altmetrics <- retrieve_altmetrics(dois_of_interest, JWT)
 
-glimpse(my_altmetrics) # a check
+# glimpse(my_altmetrics) # a check
+
+if (file.exists("data/altmetrics.csv")){
+  warning("altmetrics.csv already exists. Overwriting it.")
+}
 
 write_csv(my_altmetrics, "data/altmetrics.csv")
+
+# At this stage, the API is returning data in a non-standard format, and appears to be sparsely populated.
+# Until the API is performing properly, we should take care with using it. 
+
