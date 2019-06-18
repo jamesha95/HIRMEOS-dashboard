@@ -112,10 +112,8 @@ all_data <- metrics_data %>%
   mutate(country_name = ifelse(is.na(country_name), 
                                "No info", 
                                country_name)) %>% 
-  # this step needs to be fixed either with regex, or by reference to the OPERAS measures webpage
-  
-  mutate(platform_measure = substr(measure_id, start = 31, stop = nchar(measure_id))) %>% 
-  separate(col = platform_measure, into = c("platform", "measure", "version"), sep = "/") %>% 
+  separate(col = measure_id, into = c("junk", "junk2", "junk3","platform", "measure", "version"), sep = "/") %>%
+  select(-c(junk, junk2, junk3)) %>%  
   mutate(platform = str_replace(platform, "-", " ")) %>%
   mutate(platform_measure = paste0(platform, ": ", measure)) %>% 
   
@@ -132,19 +130,16 @@ wrangle_event_data <- function(data){
   data %>% 
   mutate(work_uri = paste0("info:doi:", work_uri)) %>%
   left_join(meta_data, by = c("work_uri" = "work_uri")) %>%
-  mutate(platform_measure = substr(measure_id, start = 40, stop = nchar(measure_id))) %>% 
-  separate(col = platform_measure, into = c("platform", "measure", "version"), sep = "/") %>% 
-  mutate(platform = str_replace(platform, "-", " ")) %>%
+  separate(col = measure_id, into = c("junk", "junk2", "junk3","platform", "measure", "version"), sep = "/") %>%
+  select(-c(junk, junk2, junk3)) %>% 
+    mutate(platform = str_replace(platform, "-", " ")) %>%
   mutate(platform_measure = paste0(platform, ": ", measure)) %>% 
   mutate(title_abbr = ifelse(nchar(title) > 100,
                              paste0(substr(title, start = 1, stop = 97), "..."),
                              title))
 }
 
-# THIS IS A TEMPORARY FEATURE FOR THE DEMONSTRATION ONLY
-demo_data <- read_csv("data/demo_data/demo_altmetrics.csv") %>%
-  wrangle_event_data()
-# Replace with: event_data <- wrangle_event_data(altmetric_data)
+event_data <- wrangle_event_data(altmetrics_data)
 
 
 # Pre-processed data (non-interactive)-------------------------------------------------------------------------------
@@ -490,9 +485,35 @@ ui <- dashboardPage(
 
 
 ##---- The Server -------------------------------------------------------------------------------
-server <- function(input, output) {
+server <- function(input, output, session) {
   
-  #---- Summary tab: static features-----------------
+  #---- A feature to allow specific urls to take you straight to the relevant book---------------------
+  
+  # This should work if after the dashboard url, you query with the following structure:
+  # .../?doi=foo
+  
+  observe({
+    query <- parseQueryString(session$clientData$url_search)
+    if(!is.null(query$doi)) {
+      doi <-query$doi
+      updateTabItems(session, 'tabs', "Metrics_by_title")
+      updatePickerInput(session, 
+                        'title', 
+                        selected = {
+                          linked_title <- all_data %>% 
+                            filter(work_uri == paste0("info:doi:", doi)) %>% 
+                            pull(title_abbr) %>%
+                            unique()
+                          if(is.null(linked_title)){
+                            titles[1]
+                            }else{linked_title}
+                        })
+    }
+  })
+  
+  
+  
+  #---- Summary tab: static features---------------------------------------------------------------
   output$metrics_table_all <- renderTable({static_metrics_data %>% 
       group_by(platform_measure) %>% 
       summarise(Value = prettyNum(sum(value), big.mark = ",")) %>% 
@@ -522,7 +543,7 @@ server <- function(input, output) {
   }) # note that title_data() is an expression that retrieves a dataset, so must be called like a function 
   
   title_altimetrics <- reactive({
-    demo_data %>%  # this will need to be replaced with "altmetric_data" in future
+    event_data %>%  
       filter(title_abbr %in% input$title) # this filters for the chosen title
             
   }) 
