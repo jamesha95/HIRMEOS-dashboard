@@ -63,7 +63,7 @@ def cred2operasname(ced_entry):
                                                 None : None
                     }[ced_entry.get('source_id')]
 
-        return 'https://temp.metrics.operas-eu.org/ced/{}'.format(base_name)
+        return 'https://metrics.operas-eu.org/{}'.format(base_name)
     else:
         return None
 
