@@ -90,12 +90,12 @@ country_geodata <- read_csv("data/country_centroids.csv") %>%
 
 
 all_data <- metrics_data %>%
-  
   left_join(meta_data, by = c("work_uri" = "work_uri")) %>% 
- # left_join(altmetrics_data, by = c("work_uri" = "URI")) %>% We should keep altmetrics separate
+ # left_join(altmetrics_data, by = c("work_uri" = "URI")) %>%  # We should keep altmetrics separate
   
-  filter(type %in% c("monograph", "book")) %>%  # for now, we will focus on book & monograph data. If we allow chapters,
+  # for now, we will focus on book & monograph data. If we allow chapters,
   # we'll need to generalise the search/filters in the UI to select for books/monograph/chapters
+  filter(type %in% c("monograph", "book")) %>%  
   
   select(work_uri,
          measure_id, # this tells us what sort of metric we're looking at
@@ -117,12 +117,14 @@ all_data <- metrics_data %>%
   mutate(platform = str_replace(platform, "-", " ")) %>%
   mutate(platform_measure = paste0(platform, ": ", measure)) %>% 
   
-  # allocating readership to quarters
+
+  # We add year-quarters for the readership dates
+  mutate(yq = as.yearqtr(timestamp)) %>%  
   
-  mutate(yq = as.yearqtr(timestamp)) %>%  # We add year-quarters for the readership dates
+  # Some titles are outrageously verbose; we tidy those here
   mutate(title_abbr = ifelse(nchar(title) > 100,
                              paste0(substr(title, start = 1, stop = 97), "..."),
-                             title)) # Some titles are outrageously verbose; we tidy those here
+                             title)) 
 
 
   
@@ -482,6 +484,21 @@ ui <- dashboardPage(
     ) # end of tabItems()
   ) # end of dashboardBody
 ) # end of UI
+#---------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ##---- The Server -------------------------------------------------------------------------------
@@ -670,6 +687,14 @@ server <- function(input, output, session) {
       ) }
     
   })
+  
+  
+  
+  
+  
+  
+  
+  
   
   
   
