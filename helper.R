@@ -29,20 +29,53 @@ quarterly_plot <- function(data, event_data = NULL){
 }
 
 
+top_10_bar_chart_data <- function(data){
+  temp <- data %>% 
+    select(country_name, platform_measure, value) %>%
+    group_by(country_name, platform_measure) %>% 
+    summarise(country_access_by_platform = sum(value)) %>%
+    ungroup() 
+  
+  # now we need a list of the top 10 countries in order, so we can convert country names to factors
+  top_10_list <- temp %>% 
+    group_by(country_name) %>% 
+    summarise(country_access = sum(country_access_by_platform)) %>% 
+    arrange(desc(country_access))%>% 
+    top_n(10, wt = country_access) %>% 
+    pull(country_name)
+  
+  temp <- temp %>%
+    filter(country_name %in% top_10_list) %>% 
+    mutate(country_name = factor(country_name,
+                                 levels = top_10_list,
+                                 ordered = T)) %>% 
+    group_by(country_name) %>% 
+    mutate(country_access = sum(country_access_by_platform)) %>% 
+    ungroup() 
+  # Because the team would like to split the country bar plot by platform-measure, the % will no longer be available, only the raw value.
+  #mutate(country_percent = percent(country_access/sum(country_access), accuracy = 1))
+  
+  return(temp)
+}
+
+
+
 top_10_countries <- function(data){
-  p2 <- ggplot(data, mapping = aes(x = country_name, y = country_access))
-  p2 <- p2 + geom_bar(stat = "identity", 
-                      fill = hirmeos_blue)
-  p2 <- p2 + geom_text(aes(label = paste0(prettyNum(country_access, big.mark = ","),
-                                          "  (",
-                                          country_percent,
-                                          ")")),
-                       hjust = -0.1)
+  p2 <- ggplot(data, mapping = aes(x = country_name, 
+                                   y = country_access_by_platform, 
+                                   fill = platform_measure))
+  p2 <- p2 + geom_col(position = "stack")
+  p2 <- p2 + geom_text(aes(label = prettyNum(country_access, big.mark = ","),
+                           y = country_access,
+                           hjust = -0.1), 
+                       check_overlap = TRUE)
+  p2 <- p2 + scale_colour_viridis_d(aesthetics = "fill")
   p2 <- p2 + coord_flip()
   p2 <- p2 + theme_void()
   p2 <- p2 + theme(axis.text.y = element_text(), 
-                   title = element_blank())
-  p2 <- p2 + scale_x_discrete(limits = rev(levels(pull(data,country_name))))
+                   title = element_blank(),
+                   legend.position = "top")
+  p2 <- p2 + scale_x_discrete(limits = rev(levels(pull(data, country_name))))
   p2 <- p2 + scale_y_continuous(limits = c(0, 1.5*max(pull(data, country_access))))
   return(p2)
 }

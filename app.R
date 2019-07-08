@@ -11,6 +11,7 @@
 library(shinydashboard)
 library(shinyWidgets)
 library(tidyverse)
+library(ggfittext)
 library(rcrossref)
 #library(plotly)
 #library(shinyWidgets)
@@ -136,14 +137,7 @@ ui <- dashboardPage(
               
               fluidRow( 
                 
-                # adjacent to the table is the top 10 countries chart
-                
-                box(plotOutput("countries_barplot_all", height = "300px"), 
-                    width = 8, 
-                    title = "Top 10 countries by readership",
-                    br(),
-                    p("Note: Not all platforms provide country-level data.")
-                ),
+               
                 
                 #table of access by different metrics
                 
@@ -160,7 +154,16 @@ ui <- dashboardPage(
                   #                    selected = measures, label = "Select measure"
                   #                     ),
                   
-                  width = 4)
+                  width = 4),
+                
+                # adjacent to the table is the top 10 countries chart
+                
+                box(plotOutput("countries_barplot_all", height = "300px"), 
+                    width = 8, 
+                    title = "Top 10 countries by readership",
+                    br(),
+                    p("Note: Not all platforms provide country-level data.")
+                )
               ), 
               
               # At the bottom, we have the readership by month chart
@@ -205,12 +208,6 @@ ui <- dashboardPage(
               
               fluidRow(
                 
-                # adjacent to the table is the top 10 countries chart 
-                box(plotOutput("countries_barplot", height = 300), 
-                    title = "Top 10 countries by readership",
-                    width = 8
-                ),
-                
                 #table of access by different metrics
                 
                 box(
@@ -220,6 +217,12 @@ ui <- dashboardPage(
                   p("Descriptions of each measure can be found ",
                     a(href = "https://metrics.operas-eu.org/measures", "here"),
                     ".")
+                ),
+                
+                # adjacent to the table is the top 10 countries chart 
+                box(plotOutput("countries_barplot", height = 300), 
+                    title = "Top 10 countries by readership",
+                    width = 8
                 )
               ),
               
@@ -441,18 +444,7 @@ server <- function(input, output, session) {
   
   # Top country bar chart
   output$countries_barplot <- renderPlot({
-    chart_data <- title_data() %>% 
-      select(country_name, value) %>%
-      group_by(country_name) %>% 
-      summarise(country_access = sum(value)) %>% 
-      arrange(desc(country_access)) %>%
-      top_n(10, wt = country_access)
-    
-    chart_data <- chart_data %>%
-      mutate(country_name = factor(x = pull(chart_data, country_name), 
-                                   levels = pull(chart_data, country_name),
-                                   ordered = T),
-             country_percent = percent(country_access/sum(country_access),accuracy = 1))
+    chart_data <- top_10_bar_chart_data(title_data()) 
     
     if(dim(chart_data)[1] > 0){
       top_10_countries(chart_data)

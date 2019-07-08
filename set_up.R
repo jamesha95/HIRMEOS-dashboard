@@ -134,19 +134,12 @@ no_countries_reached_static <- countries %>%
   length() %>% 
   prettyNum(big.mark = ",")
 
-countries_top_10 <- countries %>%
-  arrange(desc(country_access)) %>%
-  top_n(10, wt = country_access)
-
-countries_top_10 <- countries_top_10 %>%
-  mutate(country_name = factor(x = pull(countries_top_10, country_name), 
-                               levels = pull(countries_top_10, country_name),
-                               ordered = T),
-         country_percent = percent(country_access/sum(country_access), 1))
 
 
+countries_top_10_data <- top_10_bar_chart_data(all_data) #this function is a helper function that processes the data for the chart
+p2 <- top_10_countries(countries_top_10_data)
 
-p2 <- top_10_countries(countries_top_10)
+
 
 
 no_platforms_static <- all_data %>%
