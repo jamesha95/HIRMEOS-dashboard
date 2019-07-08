@@ -33,8 +33,7 @@ source("set_up.R")
 
 ui <- dashboardPage(
   skin = "blue",
-  header = dashboardHeader(title = "Readership metrics"
-  ),
+  header = dashboardHeader(title = "Readership metrics"),
   
   sidebar = dashboardSidebar(
     
@@ -82,22 +81,16 @@ ui <- dashboardPage(
     )
   ),
   
+  
+  
+  
+  
+  
+  
+  
   #---- The User Interface: Body----------------------------------------------------------------------------------                    
   
   body = dashboardBody(
-    
-    #Set a theme if desired - either with the HTML below or using the shinythemes package
-    
-    # tags$head(
-    #   tags$style(HTML("
-    #                   .content-wrapper {
-    #                   background-color: lightgrey !important;
-    #                   }
-    #                   .main-sidebar {
-    #                   background-color: white !important;
-    #                   }
-    #                   "))
-    #   ),
     
     tabItems(
       
@@ -115,20 +108,30 @@ ui <- dashboardPage(
                          color = "light-blue", 
                          width = 4),
                 
+                # After some discussion, the "Total Access" metric has been removed and replaced with number of platforms
+                
                 # A static valueBox for total access metrics
-                valueBox(value = total_access_static, 
-                         subtitle = "Total Access", 
-                         icon = icon("book-reader"),
-                         color = "teal",
-                         width = 4),
+                # valueBox(value = total_access_static, 
+                #          subtitle = "Total Access", 
+                #          icon = icon("book-reader"),
+                #          color = "teal",
+                #          width = 4),
                 
                 # A static valueBox for total number of countries reached
                 valueBox(value = no_countries_reached_static, 
                          subtitle = "Countries reached", 
                          icon = icon("flag"),
+                         color = "teal",
+                         width = 4),
+             
+                # A static valueBox for total access metrics
+                valueBox(value = no_platforms_static, 
+                         subtitle = "Total platforms", 
+                         icon = icon("window-restore"),
                          color = "light-blue",
                          width = 4)
               ),
+
               
               
               fluidRow( 
@@ -193,9 +196,11 @@ ui <- dashboardPage(
                 # Dynamic valueBoxes
                 valueBoxOutput(outputId = "no_titles_selected", width = 4),
                 
-                valueBoxOutput(outputId = "total_access", width = 4),
+                # After some discussion, the "Total Access" metric has been removed and replaced with number of platforms
+                #valueBoxOutput(outputId = "total_access", width = 4),
+                valueBoxOutput(outputId = "no_countries_reached", width = 4),
                 
-                valueBoxOutput(outputId = "no_countries_reached", width = 4)
+                valueBoxOutput(outputId = "no_platforms", width = 4)
               ),
               
               fluidRow(
@@ -222,8 +227,10 @@ ui <- dashboardPage(
                 
                 box(
                   
-                  checkboxGroupInput(inputId = "metric2",choices =  measures,
-                                     selected = measures, label = "Select measure"
+                  checkboxGroupInput(inputId = "metric2", 
+                                     choices =  measures,
+                                     selected = measures, 
+                                     label = "Select measure"
                   ),
                   plotOutput("monthly_access"),
                   width = 12,
@@ -248,7 +255,15 @@ ui <- dashboardPage(
                                     multiple = TRUE)
               ),
               fluidRow(
-                box(leafletOutput("map"),
+                box(
+                  
+                  checkboxGroupInput(inputId = "metric3", 
+                                     choices =  measures,
+                                     selected = measures, 
+                                     label = "Select measure"
+                  ),
+                
+                leafletOutput("map"),
                     width = 12),
                 p()
               )
@@ -360,15 +375,27 @@ server <- function(input, output, session) {
         color = "light-blue")
   })
   
-  output$total_access <- renderValueBox({
+  # output$total_access <- renderValueBox({
+  #   title_data() %>% # note that title_data() is an expression that retrieves a dataset, hence the () 
+  #     pull(value) %>% 
+  #     sum() %>% 
+  #     prettyNum(big.mark = ",") %>%
+  #     valueBox( 
+  #       subtitle = "Total Access", 
+  #       icon = icon("book-reader"),
+  #       color = "teal")
+  # })
+  
+  output$no_platforms <- renderValueBox({
     title_data() %>% # note that title_data() is an expression that retrieves a dataset, hence the () 
-      pull(value) %>% 
-      sum() %>% 
+      pull(platform) %>% 
+      unique() %>% 
+      length() %>% 
       prettyNum(big.mark = ",") %>%
       valueBox( 
-        subtitle = "Total Access", 
-        icon = icon("book-reader"),
-        color = "teal")
+        subtitle = "Platforms", 
+        icon = icon("window-restore"),
+        color = "light-blue")
   })
   
   
@@ -381,7 +408,7 @@ server <- function(input, output, session) {
       valueBox(
         icon = icon("flag"),
         subtitle = "Countries reached",
-        color = "light-blue")
+        color = "teal")
   })
   
   output$metrics_table <- renderTable({
@@ -452,9 +479,8 @@ server <- function(input, output, session) {
                                    , ymin = -1
                                    , ymax = 1
                                    , colour = platform_measure)) +  # change this once we name the measures 
- #))+
-     # we will need to pick a wider palette eventually, as YlGnBu can only handle up to 9 groups
-       scale_colour_brewer(palette = "Dark2", aesthetics = "colour") +
+
+       scale_fill_viridis_d(aesthetics = "colour", option = "B", end = 0.9) + #the inferno palette. Ending at 0.9 avoids the lightest yellows
       
       xlab("Event date") +
       theme_minimal() +
@@ -485,6 +511,7 @@ server <- function(input, output, session) {
   map_data <- reactive({
     all_data %>%
       filter(title_abbr %in% input$title2, # this filters for the chosen title
+             platform_measure %in% input$metric3,
              !is.na(value),
              !is.na(longitude))%>%
       group_by(country_name) %>%

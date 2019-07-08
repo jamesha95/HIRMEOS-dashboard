@@ -9,7 +9,8 @@ quarterly_plot <- function(data, event_data = NULL){
     p1 <- p1 + scale_x_continuous(expand = c(min(first_q, data$yq), Sys.yearqtr()))
   } # this is to ensure that the x axis contains the same dates as the event plot beneath
   p1 <- p1 + theme_minimal()
-  p1 <- p1 + scale_color_brewer(palette = "RdYlBu", aesthetics = "fill")
+  #p1 <- p1 + scale_color_brewer(palette = "RdYlBu", aesthetics = "fill")
+  p1 <- p1 + scale_fill_viridis_d(aesthetics = "fill")
   p1 <- p1 + theme(legend.position = "top",
                    axis.text.x = element_text(angle = 90, size = 12, vjust = 0.5),
                    axis.text.y = element_text(size = 12))

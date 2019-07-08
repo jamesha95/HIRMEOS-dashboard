@@ -149,7 +149,19 @@ countries_top_10 <- countries_top_10 %>%
 p2 <- top_10_countries(countries_top_10)
 
 
+no_platforms_static <- all_data %>%
+  filter(!is.na(platform_measure)) %>%
+  pull(platform) %>%
+  unique() %>%
+  length() %>%
+  prettyNum(big.mark = ",")
+
 # Grouping metrics by measure and date, and creating a column plot over time
+# This metric has been removed and replaced with number of platforms.
+# total_access_static <- static_metrics_data %>% 
+#   pull(value) %>% 
+#   sum() %>% 
+#   prettyNum(big.mark = ",")
 
 static_metrics_data <- all_data %>%
   filter(!is.na(platform_measure)) %>%
@@ -157,10 +169,6 @@ static_metrics_data <- all_data %>%
   group_by(platform_measure, yq) %>% 
   summarise(value = sum(value))
 
-total_access_static <- static_metrics_data %>% 
-  pull(value) %>% 
-  sum() %>% 
-  prettyNum(big.mark = ",")
 
 measures <- static_metrics_data %>%
   pull(platform_measure) %>% 
