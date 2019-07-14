@@ -91,11 +91,13 @@ all_data <- metrics_data %>%
   separate(col = measure_id, into = c("junk", "junk2", "junk3","platform", "measure", "version"), sep = "/") %>%
   select(-c(junk, junk2, junk3)) %>%  
   mutate(platform = str_replace(platform, "-", " ")) %>%
-  mutate(platform_measure = paste0(platform, ": ", measure)) %>% 
+  mutate(platform_measure = str_to_title(paste0(platform, ": ", measure))) %>% 
   
   
-  # We add year-quarters for the readership dates
-  mutate(yq = as.yearqtr(timestamp)) %>%  
+  # We add year-quarters for the readership dates (using the zoo package), and 'date' (using the lubridate package)
+  mutate(yq = as.yearqtr(timestamp), 
+         date = as_date(timestamp)) %>%  
+  
   
   # Some titles are outrageously verbose; we tidy those here
   mutate(title_abbr = ifelse(nchar(title) > 100,
@@ -129,11 +131,7 @@ countries <- all_data %>%
   summarise(country_access = sum(value))
 
 no_countries_reached_static <- countries %>%
-  pull(country_name) %>% 
-  unique() %>% 
-  length() %>% 
-  prettyNum(big.mark = ",")
-
+  n_unique("country_name")
 
 
 countries_top_10_data <- top_10_bar_chart_data(all_data) #this function is a helper function that processes the data for the chart
@@ -144,10 +142,7 @@ p2 <- top_10_countries(countries_top_10_data)
 
 no_platforms_static <- all_data %>%
   filter(!is.na(platform_measure)) %>%
-  pull(platform) %>%
-  unique() %>%
-  length() %>%
-  prettyNum(big.mark = ",")
+  n_unique("platform")
 
 # Grouping metrics by measure and date, and creating a column plot over time
 # This metric has been removed and replaced with number of platforms.
