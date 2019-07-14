@@ -11,7 +11,7 @@
 library(shinydashboard)
 library(shinyWidgets)
 library(tidyverse)
-library(ggfittext)
+#library(ggfittext) # not needed now, but may be helpful to fit text into the bar chart..?
 library(rcrossref)
 #library(plotly)
 #library(shinyWidgets)
@@ -168,7 +168,7 @@ ui <- dashboardPage(
               
               # At the bottom, we have the readership by month chart
               
-              fluidRow(box(plotOutput("monthly_access_all"), 
+              fluidRow(box(plotOutput("access_over_time_all"), 
                            width = 12, 
                            title = "Quarterly readership"))
       ),
@@ -235,7 +235,12 @@ ui <- dashboardPage(
                                      selected = measures, 
                                      label = "Select measure"
                   ),
-                  plotOutput("monthly_access"),
+                  plotOutput("access_over_time",
+                             dblclick = "hist1_dblclick",
+                             brush = brushOpts(
+                               id = "hist1_brush",
+                               resetOnNew = TRUE
+                             )),
                   width = 12,
                   plotOutput("eventsplot", height = "200px")
                   
@@ -339,7 +344,7 @@ server <- function(input, output, session) {
   
   output$countries_barplot_all <- renderPlot(p2)
   
-  output$monthly_access_all <- renderPlot(p1)
+  output$access_over_time_all <- renderPlot(p1)
   
   
   
@@ -368,10 +373,7 @@ server <- function(input, output, session) {
   
   output$no_titles_selected <- renderValueBox({
     title_data() %>% # note that title_data() is an expression that retrieves a dataset, hence the () 
-      pull(title) %>% 
-      unique() %>%
-      length() %>%
-      prettyNum(big.mark = ",") %>%
+      n_unique("title") %>% #the n_unique function needs the column name entered as a charater string
       valueBox( 
         subtitle = "Titles selected", 
         icon = icon("book"),
@@ -391,10 +393,7 @@ server <- function(input, output, session) {
   
   output$no_platforms <- renderValueBox({
     title_data() %>% # note that title_data() is an expression that retrieves a dataset, hence the () 
-      pull(platform) %>% 
-      unique() %>% 
-      length() %>% 
-      prettyNum(big.mark = ",") %>%
+      n_unique("platform") %>% 
       valueBox( 
         subtitle = "Platforms", 
         icon = icon("window-restore"),
@@ -405,9 +404,7 @@ server <- function(input, output, session) {
   
   output$no_countries_reached <- renderValueBox({
     title_data() %>%  # note that title_data() is an expression that retrieves a dataset, hence the () 
-      pull(country_name) %>% 
-      unique() %>% 
-      length() %>% 
+      n_unique("country_name") %>% 
       valueBox(
         icon = icon("flag"),
         subtitle = "Countries reached",
@@ -424,22 +421,32 @@ server <- function(input, output, session) {
   align = "cr", digits = 0
   )
   
-  output$monthly_access <- renderPlot({
+  x_range <- reactiveValues(x = NULL) # this reactive value is the range of dates that will be shown in the histogram
+  
+  output$access_over_time <- renderPlot({
     this_data <- title_data() %>% 
-      filter(platform_measure %in% input$metric2) %>% 
-      group_by(platform_measure, yq)%>%
-      summarise(value = sum(value)) %>%
-      arrange(yq, platform_measure) 
+      filter(platform_measure %in% input$metric2)
     p <- ""
     if(dim(this_data)[1] > 0){
+      # 
+      # times <- title_altimetrics() %>% # I want the x axis to be as wide as the events chart below
+      #   mutate(yq = as.yearqtr(timestamp)) %>% 
+      #   pull(yq)
       
-      times <- title_altimetrics() %>% # I want the x axis to be as wide as the events chart below
-        mutate(yq = as.yearqtr(timestamp)) %>% 
-        pull(yq)
-      
-      p <- quarterly_plot(this_data, times)}
+      p <- histogram_timeline(this_data)} + scale_x_date(limits = x_range$x) # this code is to allow the user to zoom in on a time frame
     
     return(p) #consider return(ggplotly(p)) for interactivity, or ggvis
+  })
+  
+  observeEvent(input$hist1_dblclick, {
+    brush <- input$hist1_brush
+    if (!is.null(brush)){
+      selected_data <- brushedPoints(df = {title_data() %>% 
+                      filter(platform_measure %in% input$metric2)}, brush = input$hist1_brush, xvar = "date", yvar = "value")
+      x_range$x <- c(min(selected_data$date), max(selected_data$date))
+    } else {
+      x_range$x <- NULL
+    }
   })
   
   # Top country bar chart
