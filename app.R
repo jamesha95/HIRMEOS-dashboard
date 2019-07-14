@@ -230,6 +230,8 @@ ui <- dashboardPage(
                 
                 box(
                   
+                  h4("Click and drag to highlight a section of the horizontal axis. Double-clicking will then zoom to those dates. Double-click anywhere to return to full view."),
+                  
                   checkboxGroupInput(inputId = "metric2", 
                                      choices =  measures,
                                      selected = measures, 
@@ -243,6 +245,7 @@ ui <- dashboardPage(
                              )),
                   width = 12,
                   plotOutput("eventsplot", height = "200px")
+                  
                   
                 )
               )
@@ -433,7 +436,9 @@ server <- function(input, output, session) {
       #   mutate(yq = as.yearqtr(timestamp)) %>% 
       #   pull(yq)
       
-      p <- histogram_timeline(this_data)} + scale_x_date(limits = x_range$x) # this code is to allow the user to zoom in on a time frame
+      p <- histogram_timeline(this_data)}
+    
+    if(!is.null(x_range$x)){p <- p + xlim(x_range$x)} # this code is to allow the user to zoom in on a time frame
     
     return(p) #consider return(ggplotly(p)) for interactivity, or ggvis
   })
@@ -443,11 +448,15 @@ server <- function(input, output, session) {
     if (!is.null(brush)){
       selected_data <- brushedPoints(df = {title_data() %>% 
                       filter(platform_measure %in% input$metric2)}, brush = input$hist1_brush, xvar = "date", yvar = "value")
-      x_range$x <- c(min(selected_data$date), max(selected_data$date))
+      if(dim(selected_data)[1] < 1){x_range$x <- NULL} else{
+      x_range$x <- c(min(selected_data$date), max(selected_data$date))}
+       # this line prevents the chart from crashing if the brush doesn't actually cover any data
     } else {
       x_range$x <- NULL
     }
   })
+  
+  output$temp <- renderPrint({x_range$x})
   
   # Top country bar chart
   output$countries_barplot <- renderPlot({

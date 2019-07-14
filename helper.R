@@ -8,33 +8,33 @@ n_unique <- function(data, column){
 }
 
 
-quarterly_plot <- function(data, event_data = NULL){
-  p1 <- ggplot(data, mapping = aes(x = yq, y = value))
-  p1 <- p1 + geom_col(aes(fill = platform_measure))
-  if(!is.null(event_data)){
-    last_q <- max(event_data)
-    first_q <- min(event_data)
-    p1 <- p1 + scale_x_continuous(expand = c(min(first_q, data$yq), Sys.yearqtr()))
-  } # this is to ensure that the x axis contains the same dates as the event plot beneath
-  p1 <- p1 + theme_minimal()
-  #p1 <- p1 + scale_color_brewer(palette = "RdYlBu", aesthetics = "fill")
-  p1 <- p1 + scale_fill_viridis_d(aesthetics = "fill")
-  p1 <- p1 + theme(legend.position = "top",
-                   axis.text.x = element_text(angle = 90, size = 12, vjust = 0.5),
-                   axis.text.y = element_text(size = 12))
-  # p1 <- p1 + scale_fill_discrete(palette = brewer.pal(9, "YlGnBu"))
-  # p1 <- p1 + scale_fill_manual(values = c("downloads" = brewer.pal(8, "YlGnBu")[5],
-  #                                         "sessions" = brewer.pal(8, "YlGnBu")[6],
-  #                                         "users" = brewer.pal(8, "YlGnBu")[7], 
-  #                                         "views" = brewer.pal(8, "YlGnBu")[8]))
-  p1 <- p1 + scale_y_continuous(labels = comma)
-  p1 <- p1 + ylab("")
-  p1 <- p1 + xlab("")
-  p1 <- p1 + scale_x_yearqtr(format = "%Y-Q%q")
-  #p1 <- p1 + theme(legend.title = element_blank())
-  
-  return(p1)
-}
+# quarterly_plot <- function(data, event_data = NULL){
+#   p1 <- ggplot(data, mapping = aes(x = yq, y = value))
+#   p1 <- p1 + geom_col(aes(fill = platform_measure))
+#   if(!is.null(event_data)){
+#     last_q <- max(event_data)
+#     first_q <- min(event_data)
+#     p1 <- p1 + scale_x_continuous(expand = c(min(first_q, data$yq), Sys.yearqtr()))
+#   } # this is to ensure that the x axis contains the same dates as the event plot beneath
+#   p1 <- p1 + theme_minimal()
+#   #p1 <- p1 + scale_color_brewer(palette = "RdYlBu", aesthetics = "fill")
+#   p1 <- p1 + scale_fill_viridis_d(aesthetics = "fill")
+#   p1 <- p1 + theme(legend.position = "top",
+#                    axis.text.x = element_text(angle = 90, size = 12, vjust = 0.5),
+#                    axis.text.y = element_text(size = 12))
+#   # p1 <- p1 + scale_fill_discrete(palette = brewer.pal(9, "YlGnBu"))
+#   # p1 <- p1 + scale_fill_manual(values = c("downloads" = brewer.pal(8, "YlGnBu")[5],
+#   #                                         "sessions" = brewer.pal(8, "YlGnBu")[6],
+#   #                                         "users" = brewer.pal(8, "YlGnBu")[7], 
+#   #                                         "views" = brewer.pal(8, "YlGnBu")[8]))
+#   p1 <- p1 + scale_y_continuous(labels = comma)
+#   p1 <- p1 + ylab("")
+#   p1 <- p1 + xlab("")
+#   p1 <- p1 + scale_x_yearqtr(format = "%Y-Q%q")
+#   #p1 <- p1 + theme(legend.title = element_blank())
+#   
+#   return(p1)
+# }
 
 
 
@@ -51,7 +51,7 @@ histogram_timeline <- function(data){
   p1 <- p1 + ylab("")
   p1 <- p1 + xlab("")
   p1 <- p1 + scale_x_date(date_breaks = "1 year")
-  #p1 <- p1 + theme(legend.title = element_blank())
+  p1 <- p1 + theme(legend.title = element_blank())
   
   return(p1)
 }
