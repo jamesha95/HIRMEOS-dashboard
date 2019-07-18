@@ -346,7 +346,7 @@ server <- function(input, output, session) {
   
   
   #---- Summary tab: static features---------------------------------------------------------------
-  output$metrics_table_all <- renderTable({static_metrics_data %>% 
+  output$metrics_table_all <- renderTable({static_metrics_data %>%
       group_by(platform_measure) %>% 
       summarise(Value = prettyNum(sum(value), big.mark = ",")) %>% 
       rename(Measure = platform_measure)},

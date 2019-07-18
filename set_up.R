@@ -157,7 +157,9 @@ measures <- all_data %>%
   pull(platform_measure) %>% 
   unique()
 
-
+static_metrics_data <- all_data %>%
+  filter(!is.na(platform_measure)) %>%
+  select(platform_measure, value, date)
 
 p1 <- all_data %>%
   filter(!is.na(platform_measure)) %>%
