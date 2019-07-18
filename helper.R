@@ -51,7 +51,10 @@ histogram_timeline <- function(data){
   p1 <- p1 + ylab("")
   p1 <- p1 + xlab("")
   p1 <- p1 + scale_x_date(date_breaks = "1 year")
-  p1 <- p1 + theme(legend.title = element_blank())
+  p1 <- p1 + theme(legend.title = element_blank(),
+                  text = element_text(size = 12),
+                  legend.text = element_text(size = 12))
+  p1 <- p1 + guides(fill=guide_legend(ncol=2))
   
   return(p1)
 }
@@ -105,9 +108,16 @@ top_10_countries <- function(data){
   p2 <- p2 + theme_void()
   p2 <- p2 + theme(axis.text.y = element_text(), 
                    title = element_blank(),
-                   legend.position = "top")
+                   legend.justification = "left", # this isn't working for some reason...
+                   legend.position = "top",
+              
+                 #  legend.direction= 'horizontal',
+                
+                   text = element_text(size = 12),
+                   legend.text = element_text(size = 12))
   p2 <- p2 + scale_x_discrete(limits = rev(levels(pull(data, country_name))))
   p2 <- p2 + scale_y_continuous(limits = c(0, 1.5*max(pull(data, country_access))))
+  p2 <- p2 + guides(fill=guide_legend(ncol=2))
   return(p2)
 }
 
@@ -124,5 +134,6 @@ wrangle_event_data <- function(data){
     mutate(platform_measure = paste0(platform, ": ", measure)) %>% 
     mutate(title_abbr = ifelse(nchar(title) > 100,
                                paste0(substr(title, start = 1, stop = 97), "..."),
-                               title))
+                               title)) %>% 
+    mutate(date = date(timestamp))
 }

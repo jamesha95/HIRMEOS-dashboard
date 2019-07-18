@@ -238,13 +238,22 @@ ui <- dashboardPage(
                                      label = "Select measure"
                   ),
                   plotOutput("access_over_time",
+                             height = "400px",
                              dblclick = "hist1_dblclick",
                              brush = brushOpts(
+                               direction = "x",
                                id = "hist1_brush",
                                resetOnNew = TRUE
                              )),
                   width = 12,
-                  plotOutput("eventsplot", height = "200px")
+                  plotOutput("eventsplot", 
+                             # dblclick = "timeline1_dblclick",
+                             # brush = brushOpts(
+                             #   direction = "x",
+                             #   id = "timeline1_brush",
+                             #   resetOnNew = TRUE
+                             # ),
+                             height = "200px")
                   
                   
                 )
@@ -446,8 +455,11 @@ server <- function(input, output, session) {
   observeEvent(input$hist1_dblclick, {
     brush <- input$hist1_brush
     if (!is.null(brush)){
-      selected_data <- brushedPoints(df = {title_data() %>% 
-                      filter(platform_measure %in% input$metric2)}, brush = input$hist1_brush, xvar = "date", yvar = "value")
+      selected_data <- brushedPoints(df = {title_data() %>% filter(platform_measure %in% input$metric2)}, 
+                                     brush = input$hist1_brush, 
+                                     xvar = "date", 
+                                     yvar = "value"
+                                     )
       if(dim(selected_data)[1] < 1){x_range$x <- NULL} else{
       x_range$x <- c(min(selected_data$date), max(selected_data$date))}
        # this line prevents the chart from crashing if the brush doesn't actually cover any data
@@ -456,8 +468,7 @@ server <- function(input, output, session) {
     }
   })
   
-  output$temp <- renderPrint({x_range$x})
-  
+ 
   # Top country bar chart
   output$countries_barplot <- renderPlot({
     chart_data <- top_10_bar_chart_data(title_data()) 
@@ -469,21 +480,26 @@ server <- function(input, output, session) {
   
   # this is a pretty rudimentary attempt at an event timeline
   output$eventsplot <- renderPlot({
-    if(dim(title_altimetrics())[1] >0){
-      times <- title_data() %>% # I want the x axis to be as wide as the chart above
-        pull(timestamp)
+    p <- NULL
+    if(dim(title_altimetrics())[1] > 0){
+      min_metric_date <- title_data() %>% # I want the x axis to be as wide as the chart above
+        pull(date) %>%
+        min()
+      min_altmetric_date <- title_altimetrics() %>%
+        pull(date) %>%
+        min() 
       
-    title_altimetrics() %>% 
+    p <- title_altimetrics() %>% 
       ggplot() +
       geom_segment(
-        aes(x = min(c(min(times), min(timestamp))) - 10   # I want the x axis to contain all the events
-            , xend = as.POSIXct(Sys.Date()) + 20
+        aes(x = min(min_altmetric_date, min_metric_date) - 10   # I want the x axis to contain all the events
+            , xend = Sys.Date() + 10
             , y = 0
             , yend = 0)
             , colour = "black"
             , size = 0.5
       ) +
-      geom_linerange(mapping = aes(x = timestamp
+      geom_linerange(mapping = aes(x = date
                                    , ymin = -1
                                    , ymax = 1
                                    , colour = platform_measure)) +  # change this once we name the measures 
@@ -491,14 +507,20 @@ server <- function(input, output, session) {
        scale_fill_viridis_d(aesthetics = "colour", option = "B", end = 0.9) + #the inferno palette. Ending at 0.9 avoids the lightest yellows
       
       xlab("Event date") +
+      ylab("One line per event") +
       theme_minimal() +
       theme(axis.text.y = element_blank()
-            , axis.title.y = element_blank()
+            , axis.title.y = element_text(size = 14, margin = margin(r = 10, l = 10))
             , panel.grid.major.y = element_blank()
             , panel.grid.minor.y = element_blank()
             , legend.position = "bottom"
-            
-      ) }
+            , text = element_text(size = 12)
+            , legend.text = element_text(size = 12)
+      ) +
+      guides(fill=guide_legend(ncol=2))
+    if(!is.null(x_range$x)){p <- p + xlim(x_range$x)} # this code zooms the range of this plot to match the one above
+    }
+    return(p)
     
   })
   

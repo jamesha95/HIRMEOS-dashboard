@@ -151,17 +151,15 @@ no_platforms_static <- all_data %>%
 #   sum() %>% 
 #   prettyNum(big.mark = ",")
 
-static_metrics_data <- all_data %>%
-  filter(!is.na(platform_measure)) %>%
-  select(platform_measure, value, yq) %>%
-  group_by(platform_measure, yq) %>% 
-  summarise(value = sum(value))
 
-
-measures <- static_metrics_data %>%
+measures <- all_data %>%
+  filter(!is.na(platform_measure)) %>% 
   pull(platform_measure) %>% 
   unique()
 
 
 
-p1 <- quarterly_plot(static_metrics_data)
+p1 <- all_data %>%
+  filter(!is.na(platform_measure)) %>%
+  select(platform_measure, value, date) %>%
+histogram_timeline()
