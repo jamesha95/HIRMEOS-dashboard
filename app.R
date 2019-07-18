@@ -516,8 +516,9 @@ server <- function(input, output, session) {
             , legend.position = "bottom"
             , text = element_text(size = 12)
             , legend.text = element_text(size = 12)
+            , legend.title = element_blank()
       ) +
-      guides(fill=guide_legend(ncol=2))
+      guides(fill=guide_legend(ncol = 4))
     if(!is.null(x_range$x)){p <- p + xlim(x_range$x)} # this code zooms the range of this plot to match the one above
     }
     return(p)
