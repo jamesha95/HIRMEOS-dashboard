@@ -246,6 +246,7 @@ ui <- dashboardPage(
                                resetOnNew = TRUE
                              )),
                   width = 12,
+                 
                   plotOutput("eventsplot", 
                              # dblclick = "timeline1_dblclick",
                              # brush = brushOpts(
@@ -253,7 +254,11 @@ ui <- dashboardPage(
                              #   id = "timeline1_brush",
                              #   resetOnNew = TRUE
                              # ),
-                             height = "200px")
+                             height = "200px"),
+                  
+                  downloadLink('download_metrics_data', 'Download metrics data'),
+                  br(),
+                  downloadLink('download_event_data', 'Download event data')
                   
                   
                 )
@@ -379,6 +384,25 @@ server <- function(input, output, session) {
       filter(title_abbr %in% input$title) # this filters for the chosen title
             
   }) 
+
+  # here we make the filtered data available for download as a .csv
+   output$download_metrics_data <- downloadHandler(
+     filename = function() {
+       paste('metrics-data-', Sys.Date(), '.csv', sep='')
+     },
+     content = function(con) {
+       write.csv(title_data(), con)
+     }
+   )
+   
+   output$download_event_data <- downloadHandler(
+     filename = function() {
+       paste('event-data-', Sys.Date(), '.csv', sep='')
+     },
+     content = function(con) {
+       write.csv(title_altimetrics(), con)
+     }
+   )
   
   
   
