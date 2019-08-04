@@ -9,6 +9,7 @@
 
 #library(shiny)
 library(shinydashboard)
+library(shinyjs) # For the "disable" feature until a password is entered
 library(shinyWidgets)
 library(tidyverse)
 #library(ggfittext) # not needed now, but may be helpful to fit text into the bar chart..?
@@ -44,6 +45,7 @@ ui <- dashboardPage(
       menuItem("Summary", tabName = "Summary", icon = icon("dashboard")),
       menuItem("Metrics by title", tabName = "Metrics_by_title", icon = icon("book")),
       menuItem("Global reach", tabName = "Metrics_by_country", icon = icon("globe")),
+      menuItem("Admin", tabName = "Admin", icon = icon("key")),
       
       # We add a horizontal line, followed by the HIRMEOS logo, OPERAS logo and EU logo
       hr(),
@@ -57,7 +59,7 @@ ui <- dashboardPage(
         solidHeader = TRUE
       ),
       
-
+      
       
       box(
         a(href = 'https://operas.hypotheses.org/',
@@ -92,6 +94,7 @@ ui <- dashboardPage(
   #---- The User Interface: Body----------------------------------------------------------------------------------                    
   
   body = dashboardBody(
+    useShinyjs(),
     
     tabItems(
       
@@ -124,7 +127,7 @@ ui <- dashboardPage(
                          icon = icon("flag"),
                          color = "teal",
                          width = 4),
-             
+                
                 # A static valueBox for total access metrics
                 valueBox(value = no_platforms_static, 
                          subtitle = "Total platforms", 
@@ -132,12 +135,12 @@ ui <- dashboardPage(
                          color = "light-blue",
                          width = 4)
               ),
-
+              
               
               
               fluidRow( 
                 
-               
+                
                 
                 #table of access by different metrics
                 
@@ -246,7 +249,7 @@ ui <- dashboardPage(
                                resetOnNew = TRUE
                              )),
                   width = 12,
-                 
+                  
                   plotOutput("eventsplot", 
                              # dblclick = "timeline1_dblclick",
                              # brush = brushOpts(
@@ -271,7 +274,7 @@ ui <- dashboardPage(
               wellPanel(pickerInput(inputId = "title2", 
                                     label = "Choose a title or select all", 
                                     # selected = titles,  # start with all or none selected
-# none is the better option, because dots don't load by default until someone interacts with the map
+                                    # none is the better option, because dots don't load by default until someone interacts with the map
                                     choices = titles,
                                     options = pickerOptions(actionsBox = TRUE,
                                                             liveSearch = TRUE,
@@ -287,9 +290,9 @@ ui <- dashboardPage(
                                      selected = measures, 
                                      label = "Select measure"
                   ),
-                
-                leafletOutput("map"),
-                    width = 12),
+                  
+                  leafletOutput("map"),
+                  width = 12),
                 p()
               )
               
@@ -298,315 +301,401 @@ ui <- dashboardPage(
               #global dot map
               #views per month for selected title, split by platform/metric 
               
-      )
-      # end of the tabbed items
+      ),
       
-    ) # end of tabItems()
-  ) # end of dashboardBody
-) # end of UI
-#---------------------------------------------------------------------------------
-#---------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-##---- The Server -------------------------------------------------------------------------------
-server <- function(input, output, session) {
+      #----- Tab 4: Admin ----------------------------------------------------------------------------
+      
+      tabItem(tabName = "Admin",
+              wellPanel("Enter the password to manage the dashboard's data, then press 'Go'",
+                        
+                        passwordInput(inputId = "admin_password",
+                                      label = "",
+                                      value = ""),
+                        actionButton("go", "Go"),
+                        
+                        verbatimTextOutput("password_reponse"),
+                        
+                        br(), 
+                        
+                        disabled(downloadButton(outputId = "download_all_data",
+                                              label =  "Download the current data")
+                        )),
+              
+              wellPanel(h4("Upload new data here"),
+                        
+                        disabled(fileInput(inputId = "upload",
+                                           label =  "Choose CSV File or .xlsx",
+                                           accept = c(
+                                             "text/csv",
+                                             "text/comma-separated-values",
+                                             "text/plain",
+                                             ".csv",
+                                             ".xlsx"))
+                        ),
+                        checkboxInput(inputId = "header",
+                                      label =  "Header",
+                                      value =  TRUE),
+                        
+                        #tableOutput(outputId = "uploaded_file_details"),
+                        
+                        "Check 1: does the data have the requisite columns?",
+                        br(),
+                        "Check 2: should the existing data be overwritten, or appended?",
+                        br(),
+                        "Check 3: A message to say that the data has been uploaded successfully",
+                        br(),
+                        "Check 4: Perhaps something to do with version control of their data..?"
+                        
+                        
+                        
+              ) # end of well panel        
+                        
+              )     # end of the tabbed items
+              
+      ) # end of tabItems()
+    ) # end of dashboardBody
+  ) # end of UI
   
-  #---- A feature to allow specific urls to take you straight to the relevant book---------------------
   
-  # This should work if after the dashboard url, you query with the following structure:
-  # .../?doi=foo
   
-  observe({
-    query <- parseQueryString(session$clientData$url_search)
-    if(!is.null(query$doi)) {
-      doi <-query$doi
-      updateTabItems(session, 'tabs', "Metrics_by_title")
-      updatePickerInput(session, 
-                        'title', 
-                        selected = {
-                          linked_title <- all_data %>% 
-                            filter(work_uri == paste0("info:doi:", doi)) %>% 
-                            pull(title_abbr) %>%
-                            unique()
-                          if(is.null(linked_title)){
-                            titles[1]
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  ##---- The Server -------------------------------------------------------------------------------
+  server <- function(input, output, session) {
+    
+    #---- A feature to allow specific urls to take you straight to the relevant book---------------------
+    
+    # This should work if after the dashboard url, you query with the following structure:
+    # .../?doi=foo
+    
+    observe({
+      query <- parseQueryString(session$clientData$url_search)
+      if(!is.null(query$doi)) {
+        doi <-query$doi
+        updateTabItems(session, 'tabs', "Metrics_by_title")
+        updatePickerInput(session, 
+                          'title', 
+                          selected = {
+                            linked_title <- all_data %>% 
+                              filter(work_uri == paste0("info:doi:", doi)) %>% 
+                              pull(title_abbr) %>%
+                              unique()
+                            if(is.null(linked_title)){
+                              titles[1]
                             }else{linked_title}
-                        })
-    }
-  })
-  
-  
-  
-  #---- Summary tab: static features---------------------------------------------------------------
-  output$metrics_table_all <- renderTable({static_metrics_data %>%
-      group_by(platform_measure) %>% 
-      summarise(Value = prettyNum(sum(value), big.mark = ",")) %>% 
-      rename(Measure = platform_measure)},
-      digits = 0, 
-      align = "cr"
-  )
-  
-  output$countries_barplot_all <- renderPlot(p2)
-  
-  output$access_over_time_all <- renderPlot(p1)
-  
-  
-  
-  
-  
-  
-  
-  #---- Metrics by title tab-----------------------------------------------------------------
-  
-  # instead of filtering our dataset many times (costly), we create a reactive expression
-  # that builds a new dataset with each update of input$title
-  title_data <- reactive({
-    all_data %>%
-      filter(title_abbr %in% input$title, # this filters for the chosen title
-             !is.na(value)) # this removes any measure with a missing value
-  }) # note that title_data() is an expression that retrieves a dataset, so must be called like a function 
-  
-  title_altimetrics <- reactive({
-    event_data %>%  
-      filter(title_abbr %in% input$title) # this filters for the chosen title
-            
-  }) 
-
-  # here we make the filtered data available for download as a .csv
-   output$download_metrics_data <- downloadHandler(
-     filename = function() {
-       paste('metrics-data-', Sys.Date(), '.csv', sep='')
-     },
-     content = function(con) {
-       write.csv(title_data(), con)
-     }
-   )
-   
-   output$download_event_data <- downloadHandler(
-     filename = function() {
-       paste('event-data-', Sys.Date(), '.csv', sep='')
-     },
-     content = function(con) {
-       write.csv(title_altimetrics(), con)
-     }
-   )
-  
-  
-  
-  
-  output$no_titles_selected <- renderValueBox({
-    title_data() %>% # note that title_data() is an expression that retrieves a dataset, hence the () 
-      n_unique("title") %>% #the n_unique function needs the column name entered as a charater string
-      valueBox( 
-        subtitle = "Titles selected", 
-        icon = icon("book"),
-        color = "light-blue")
-  })
-  
-  # output$total_access <- renderValueBox({
-  #   title_data() %>% # note that title_data() is an expression that retrieves a dataset, hence the () 
-  #     pull(value) %>% 
-  #     sum() %>% 
-  #     prettyNum(big.mark = ",") %>%
-  #     valueBox( 
-  #       subtitle = "Total Access", 
-  #       icon = icon("book-reader"),
-  #       color = "teal")
-  # })
-  
-  output$no_platforms <- renderValueBox({
-    title_data() %>% # note that title_data() is an expression that retrieves a dataset, hence the () 
-      n_unique("platform") %>% 
-      valueBox( 
-        subtitle = "Platforms", 
-        icon = icon("window-restore"),
-        color = "light-blue")
-  })
-  
-  
-  
-  output$no_countries_reached <- renderValueBox({
-    title_data() %>%  # note that title_data() is an expression that retrieves a dataset, hence the () 
-      n_unique("country_name") %>% 
-      valueBox(
-        icon = icon("flag"),
-        subtitle = "Countries reached",
-        color = "teal")
-  })
-  
-  output$metrics_table <- renderTable({
-    title_data() %>%   
-      group_by(platform_measure)%>%
-      summarise(value = prettyNum(sum(value),
-                                  big.mark = ",")) %>%
-      rename(metric = platform_measure)
-  }, 
-  align = "cr", digits = 0
-  )
-  
-  x_range <- reactiveValues(x = NULL) # this reactive value is the range of dates that will be shown in the histogram
-  
-  output$access_over_time <- renderPlot({
-    this_data <- title_data() %>% 
-      filter(platform_measure %in% input$metric2)
-    p <- ""
-    if(dim(this_data)[1] > 0){
-      # 
-      # times <- title_altimetrics() %>% # I want the x axis to be as wide as the events chart below
-      #   mutate(yq = as.yearqtr(timestamp)) %>% 
-      #   pull(yq)
+                          })
+      }
+    })
+    
+    
+    
+    #---- Tab 1: static features---------------------------------------------------------------
+    output$metrics_table_all <- renderTable({static_metrics_data %>%
+        group_by(platform_measure) %>% 
+        summarise(Value = prettyNum(sum(value), big.mark = ",")) %>% 
+        rename(Measure = platform_measure)},
+        digits = 0, 
+        align = "cr"
+    )
+    
+    output$countries_barplot_all <- renderPlot(p2)
+    
+    output$access_over_time_all <- renderPlot(p1)
+    
+    
+    
+    
+    
+    
+    
+    #---- Tab 2: Metrics by title tab-----------------------------------------------------------------
+    
+    # instead of filtering our dataset many times (costly), we create a reactive expression
+    # that builds a new dataset with each update of input$title
+    title_data <- reactive({
+      all_data %>%
+        filter(title_abbr %in% input$title, # this filters for the chosen title
+               !is.na(value)) # this removes any measure with a missing value
+    }) # note that title_data() is an expression that retrieves a dataset, so must be called like a function 
+    
+    title_altimetrics <- reactive({
+      event_data %>%  
+        filter(title_abbr %in% input$title) # this filters for the chosen title
       
-      p <- histogram_timeline(this_data)}
+    }) 
     
-    if(!is.null(x_range$x)){p <- p + xlim(x_range$x)} # this code is to allow the user to zoom in on a time frame
+    # here we make the filtered data available for download as a .csv
+    output$download_metrics_data <- downloadHandler(
+      filename = function() {
+        paste('metrics-data-', Sys.Date(), '.csv', sep='')
+      },
+      content = function(con) {
+        write.csv(title_data(), con)
+      }
+    )
     
-    return(p) #consider return(ggplotly(p)) for interactivity, or ggvis
-  })
-  
-  observeEvent(input$hist1_dblclick, {
-    brush <- input$hist1_brush
-    if (!is.null(brush)){
-      selected_data <- brushedPoints(df = {title_data() %>% filter(platform_measure %in% input$metric2)}, 
-                                     brush = input$hist1_brush, 
-                                     xvar = "date", 
-                                     yvar = "value"
-                                     )
-      if(dim(selected_data)[1] < 1){x_range$x <- NULL} else{
-      x_range$x <- c(min(selected_data$date), max(selected_data$date))}
-       # this line prevents the chart from crashing if the brush doesn't actually cover any data
-    } else {
-      x_range$x <- NULL
-    }
-  })
-  
- 
-  # Top country bar chart
-  output$countries_barplot <- renderPlot({
-    chart_data <- top_10_bar_chart_data(title_data()) 
+    output$download_event_data <- downloadHandler(
+      filename = function() {
+        paste('event-data-', Sys.Date(), '.csv', sep='')
+      },
+      content = function(con) {
+        write.csv(title_altimetrics(), con)
+      }
+    )
     
-    if(dim(chart_data)[1] > 0){
-      top_10_countries(chart_data)
-    }
-  })
-  
-  # this is a pretty rudimentary attempt at an event timeline
-  output$eventsplot <- renderPlot({
-    p <- NULL
-    if(dim(title_altimetrics())[1] > 0){
-      min_metric_date <- title_data() %>% # I want the x axis to be as wide as the chart above
-        pull(date) %>%
-        min()
-      min_altmetric_date <- title_altimetrics() %>%
-        pull(date) %>%
-        min() 
+    
+    
+    
+    output$no_titles_selected <- renderValueBox({
+      title_data() %>% # note that title_data() is an expression that retrieves a dataset, hence the () 
+        n_unique("title") %>% #the n_unique function needs the column name entered as a charater string
+        valueBox( 
+          subtitle = "Titles selected", 
+          icon = icon("book"),
+          color = "light-blue")
+    })
+    
+    # output$total_access <- renderValueBox({
+    #   title_data() %>% # note that title_data() is an expression that retrieves a dataset, hence the () 
+    #     pull(value) %>% 
+    #     sum() %>% 
+    #     prettyNum(big.mark = ",") %>%
+    #     valueBox( 
+    #       subtitle = "Total Access", 
+    #       icon = icon("book-reader"),
+    #       color = "teal")
+    # })
+    
+    output$no_platforms <- renderValueBox({
+      title_data() %>% # note that title_data() is an expression that retrieves a dataset, hence the () 
+        n_unique("platform") %>% 
+        valueBox( 
+          subtitle = "Platforms", 
+          icon = icon("window-restore"),
+          color = "light-blue")
+    })
+    
+    
+    
+    output$no_countries_reached <- renderValueBox({
+      title_data() %>%  # note that title_data() is an expression that retrieves a dataset, hence the () 
+        n_unique("country_name") %>% 
+        valueBox(
+          icon = icon("flag"),
+          subtitle = "Countries reached",
+          color = "teal")
+    })
+    
+    output$metrics_table <- renderTable({
+      title_data() %>%   
+        group_by(platform_measure)%>%
+        summarise(value = prettyNum(sum(value),
+                                    big.mark = ",")) %>%
+        rename(metric = platform_measure)
+    }, 
+    align = "cr", digits = 0
+    )
+    
+    x_range <- reactiveValues(x = NULL) # this reactive value is the range of dates that will be shown in the histogram
+    
+    output$access_over_time <- renderPlot({
+      this_data <- title_data() %>% 
+        filter(platform_measure %in% input$metric2)
+      p <- ""
+      if(dim(this_data)[1] > 0){
+        # 
+        # times <- title_altimetrics() %>% # I want the x axis to be as wide as the events chart below
+        #   mutate(yq = as.yearqtr(timestamp)) %>% 
+        #   pull(yq)
+        
+        p <- histogram_timeline(this_data)}
       
-    p <- title_altimetrics() %>% 
-      ggplot() +
-      geom_segment(
-        aes(x = min(min_altmetric_date, min_metric_date) - 10   # I want the x axis to contain all the events
-            , xend = Sys.Date() + 10
-            , y = 0
-            , yend = 0)
+      if(!is.null(x_range$x)){p <- p + xlim(x_range$x)} # this code is to allow the user to zoom in on a time frame
+      
+      return(p) #consider return(ggplotly(p)) for interactivity, or ggvis
+    })
+    
+    observeEvent(input$hist1_dblclick, {
+      brush <- input$hist1_brush
+      if (!is.null(brush)){
+        selected_data <- brushedPoints(df = {title_data() %>% filter(platform_measure %in% input$metric2)}, 
+                                       brush = input$hist1_brush, 
+                                       xvar = "date", 
+                                       yvar = "value"
+        )
+        if(dim(selected_data)[1] < 1){x_range$x <- NULL} else{
+          x_range$x <- c(min(selected_data$date), max(selected_data$date))}
+        # this line prevents the chart from crashing if the brush doesn't actually cover any data
+      } else {
+        x_range$x <- NULL
+      }
+    })
+    
+    
+    # Top country bar chart
+    output$countries_barplot <- renderPlot({
+      chart_data <- top_10_bar_chart_data(title_data()) 
+      
+      if(dim(chart_data)[1] > 0){
+        top_10_countries(chart_data)
+      }
+    })
+    
+    # this is a pretty rudimentary attempt at an event timeline
+    output$eventsplot <- renderPlot({
+      p <- NULL
+      if(dim(title_altimetrics())[1] > 0){
+        min_metric_date <- title_data() %>% # I want the x axis to be as wide as the chart above
+          pull(date) %>%
+          min()
+        min_altmetric_date <- title_altimetrics() %>%
+          pull(date) %>%
+          min() 
+        
+        p <- title_altimetrics() %>% 
+          ggplot() +
+          geom_segment(
+            aes(x = min(min_altmetric_date, min_metric_date) - 10   # I want the x axis to contain all the events
+                , xend = Sys.Date() + 10
+                , y = 0
+                , yend = 0)
             , colour = "black"
             , size = 0.5
-      ) +
-      geom_linerange(mapping = aes(x = date
-                                   , ymin = -1
-                                   , ymax = 1
-                                   , colour = platform_measure)) +  # change this once we name the measures 
-
-       scale_fill_viridis_d(aesthetics = "colour", option = "B", end = 0.9) + #the inferno palette. Ending at 0.9 avoids the lightest yellows
+          ) +
+          geom_linerange(mapping = aes(x = date
+                                       , ymin = -1
+                                       , ymax = 1
+                                       , colour = platform_measure)) +  # change this once we name the measures 
+          
+          scale_fill_viridis_d(aesthetics = "colour", option = "B", end = 0.9) + #the inferno palette. Ending at 0.9 avoids the lightest yellows
+          
+          xlab("Event date") +
+          ylab("One line per event") +
+          theme_minimal() +
+          theme(axis.text.y = element_blank()
+                , axis.title.y = element_text(size = 14, margin = margin(r = 10, l = 10))
+                , panel.grid.major.y = element_blank()
+                , panel.grid.minor.y = element_blank()
+                , legend.position = "bottom"
+                , text = element_text(size = 12)
+                , legend.text = element_text(size = 12)
+                , legend.title = element_blank()
+          ) +
+          guides(fill=guide_legend(ncol = 4))
+        if(!is.null(x_range$x)){p <- p + xlim(x_range$x)} # this code zooms the range of this plot to match the one above
+      }
+      return(p)
       
-      xlab("Event date") +
-      ylab("One line per event") +
-      theme_minimal() +
-      theme(axis.text.y = element_blank()
-            , axis.title.y = element_text(size = 14, margin = margin(r = 10, l = 10))
-            , panel.grid.major.y = element_blank()
-            , panel.grid.minor.y = element_blank()
-            , legend.position = "bottom"
-            , text = element_text(size = 12)
-            , legend.text = element_text(size = 12)
-            , legend.title = element_blank()
-      ) +
-      guides(fill=guide_legend(ncol = 4))
-    if(!is.null(x_range$x)){p <- p + xlim(x_range$x)} # this code zooms the range of this plot to match the one above
-    }
-    return(p)
+    })
     
-  })
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  ##---- Leaflet tab --------------------------------------------------------------------
-  
-  # Map of the world
-  map_data <- reactive({
-    all_data %>%
-      filter(title_abbr %in% input$title2, # this filters for the chosen title
-             platform_measure %in% input$metric3,
-             !is.na(value),
-             !is.na(longitude))%>%
-      group_by(country_name) %>%
-      summarise(total_access = sum(value),
-                longitude = max(longitude),
-                latitude = max(latitude)) # all longitude/latitude values should be the same for a given country
-  }) 
-  
-  
-  output$map <- renderLeaflet({
-    leaflet(options = leafletOptions(minZoom = 1, 
-                                     worldCopyJump = TRUE # This allows continuous panning left-right
-    )
-    ) %>%
-      addProviderTiles(providers$Stamen.TonerLite,
-                       options = providerTileOptions(nowrap = FALSE)
-      ) %>% 
-      fitBounds(-180, -70, 180, 75)
     
-  })
-  
-  observe({
-    map_data <- map_data()
     
-    leafletProxy("map", data = map_data()) %>%
-      clearMarkers() %>%
-      addCircleMarkers(radius = ~log(total_access) + 3, # The +3 helps to make small circles clickable
-                       weight = 1, 
-                       color = hirmeos_blue,
-                       fillColor = hirmeos_blue, 
-                       fillOpacity = 0.7, 
-                       popup = ~paste0(country_name, ": ", prettyNum(total_access, big.mark = ","))
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    ##---- Tab 3: Leaflet tab --------------------------------------------------------------------
+    
+    # Map of the world
+    map_data <- reactive({
+      all_data %>%
+        filter(title_abbr %in% input$title2, # this filters for the chosen title
+               platform_measure %in% input$metric3,
+               !is.na(value),
+               !is.na(longitude))%>%
+        group_by(country_name) %>%
+        summarise(total_access = sum(value),
+                  longitude = max(longitude),
+                  latitude = max(latitude)) # all longitude/latitude values should be the same for a given country
+    }) 
+    
+    
+    output$map <- renderLeaflet({
+      leaflet(options = leafletOptions(minZoom = 1, 
+                                       worldCopyJump = TRUE # This allows continuous panning left-right
       )
-  })
+      ) %>%
+        addProviderTiles(providers$Stamen.TonerLite,
+                         options = providerTileOptions(nowrap = FALSE)
+        ) %>% 
+        fitBounds(-180, -70, 180, 75)
+      
+    })
+    
+    observe({
+      map_data <- map_data()
+      
+      leafletProxy("map", data = map_data()) %>%
+        clearMarkers() %>%
+        addCircleMarkers(radius = ~log(total_access) + 3, # The +3 helps to make small circles clickable
+                         weight = 1, 
+                         color = hirmeos_blue,
+                         fillColor = hirmeos_blue, 
+                         fillOpacity = 0.7, 
+                         popup = ~paste0(country_name, ": ", prettyNum(total_access, big.mark = ","))
+        )
+    })
+    
+    ##----- Tab 4: The admin tab -------------------------------------------------------------------
+    
+    
+    observeEvent(input$go, {
+      req(input$admin_password)
+      if(input$admin_password == my_secrets("admin_password.csv")){
+      enable("download_all_data")
+      enable("upload")
+      output$password_reponse <- renderText("Correct")
+      } else {output$password_response <- renderText("Incorrect password")}
+    })
+    
+    output$password_reponse <- renderText({
+      req(input$admin_password)
+      req(input$go)
+      if(input$admin_password == my_secrets("admin_password.csv")){
+        return("Correct")
+      } else {return("Incorrect password")}
+    })
+    
+    
+    #input$download_all_data
+    
+    
+    
+    #input$upload
+    
+    
+    #input$header
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  }
   
-  # Line chart by platform
   
-}
-
-
-
-##---- The final command ----
-shinyApp(ui = ui, server = server)
+  
+  ##---- The final command ----
+  shinyApp(ui = ui, server = server)
+  

@@ -4,6 +4,7 @@ list.of.packages <- c(
   "tidyverse", # tidyverse should already be part of the Docker image
   "shinydashboard", # for styling the shiny app as a dashboard easily
   "shinyWidgets", # extends the number of shiny input options
+  "shinyjs", # allows more functions, like disabling an input button until a password has been entered
   "rcrossref", # the crossref API: for easily getting metadata like title, authorship from DOI
   "httr", # for calling the altmetrics API
   "jsonlite", # for handling JSON data

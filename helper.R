@@ -7,6 +7,14 @@ n_unique <- function(data, column){
     prettyNum(big.mark = ",")
 }
 
+my_secrets <- function(secret){
+  path <- paste0("secrets/", secret) # you should have a files with your email and password for the altmetrics API
+  if (!file.exists(path)) {
+    stop("Can't find secret file: '", path, "'")
+  }
+  read_file(path)
+}
+
 
 # quarterly_plot <- function(data, event_data = NULL){
 #   p1 <- ggplot(data, mapping = aes(x = yq, y = value))
