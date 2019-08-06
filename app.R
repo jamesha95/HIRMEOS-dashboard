@@ -318,27 +318,45 @@ ui <- dashboardPage(
                         br(), 
                         
                         disabled(downloadButton(outputId = "download_all_data",
-                                              label =  "Download the current data")
+                                              label =  "Download the current combined dataset"),
+                                 downloadButton(outputId = "download_all_metrics_data",
+                                                label =  "Download the current metrics data"),
+                                 downloadButton(outputId = "download_all_meta_data",
+                                                label =  "Download the current metadata"),
+                                 downloadButton(outputId = "download_all_altmetrics_data",
+                                                label =  "Download the current altmetrics data")
+                                 
+                                 
                         )),
               
               wellPanel(h4("Upload new data here"),
                         
+                        pickerInput(inputId = "file_type",
+                                    label = "Type of file",
+                                    choices = c("Metrics", "Metadata", "Altmetrics"),
+                                    selected = "Metrics",
+                                    multiple = FALSE),
+                        
                         disabled(fileInput(inputId = "upload",
-                                           label =  "Choose CSV File or .xlsx",
+                                           label =  "Choose CSV File",
                                            accept = c(
                                              "text/csv",
                                              "text/comma-separated-values",
                                              "text/plain",
-                                             ".csv",
-                                             ".xlsx"))
+                                             ".csv"))
                         ),
-                        checkboxInput(inputId = "header",
-                                      label =  "Header",
+                        
+                        
+                        tableOutput(outputId = "uploaded_file_details"),
+                        
+                        checkboxInput(inputId = "head",
+                                      label =  "Preview the uploaded data?",
                                       value =  TRUE),
                         
-                        #tableOutput(outputId = "uploaded_file_details"),
+                        tableOutput(outputId = "uploaded_file_head"),
                         
-                        "Check 1: does the data have the requisite columns?",
+                        verbatimTextOutput("response_to_new_data"),
+                        
                         br(),
                         "Check 2: should the existing data be overwritten, or appended?",
                         br(),
@@ -653,42 +671,111 @@ ui <- dashboardPage(
     
     ##----- Tab 4: The admin tab -------------------------------------------------------------------
     
-    
+    # password protection
     observeEvent(input$go, {
       req(input$admin_password)
-      if(input$admin_password == my_secrets("admin_password.csv")){
+      pw <- isolate(input$admin_password)
+      if(pw == my_secrets("admin_password.csv")){
       enable("download_all_data")
-      enable("upload")
-      output$password_reponse <- renderText("Correct")
-      } else {output$password_response <- renderText("Incorrect password")}
+      enable("upload")}
     })
     
     output$password_reponse <- renderText({
-      req(input$admin_password)
       req(input$go)
-      if(input$admin_password == my_secrets("admin_password.csv")){
+      
+      pw <- isolate(req(input$admin_password))
+      if(pw == my_secrets("admin_password.csv")){
         return("Correct")
       } else {return("Incorrect password")}
     })
     
     
-    #input$download_all_data
+    
+    # here we make all data available for download as a .csv
+    output$download_all_data <- downloadHandler(
+      filename = function() {
+        paste('all-data-', Sys.Date(), '.csv', sep='')
+      },
+      content = function(con) {
+        write.csv(all_data, con)
+      }
+    )
+    
+    output$download_all_metrics_data <- downloadHandler(
+      filename = function() {
+        paste('all-metrics-data-', Sys.Date(), '.csv', sep='')
+      },
+      content = function(con) {
+        write.csv(metrics_data, con)
+      }
+    )
+    
+    output$download_all_meta_data <- downloadHandler(
+      filename = function() {
+        paste('all-meta-data-', Sys.Date(), '.csv', sep='')
+      },
+      content = function(con) {
+        write.csv(meta_data, con)
+      }
+    )
+    
+    output$download_all_altmetrics_data <- downloadHandler(
+      filename = function() {
+        paste('all-altmetrics-data-', Sys.Date(), '.csv', sep='')
+      },
+      content = function(con) {
+        write.csv(altmetrics_data, con)
+      }
+    )
     
     
+    # Here we deal with the incoming data from the user
+    uploaded_data <- reactive({
+      req(input$upload)
+      req(input$file_type)
+      upload <- input$upload
+      read_csv(upload$datapath)
+    })
     
-    #input$upload
+    output$response_to_new_data <- renderText({
+      req(input$upload)
+      col_names <- uploaded_data() %>% names()
+      switch(input$file_type,
+             Metrics = ifelse(all(c("measure_id", "timestamp", "work_uri", "country_uri", "value") %in% col_names), 
+                              yes = "Looks okay!", 
+                              no = paste("Error! Missing a required column(s). Required columns are:","measure_id", "timestamp", "work_uri", "country_uri", "value")),
+             Metadata = ifelse(all(c("doi", "title", "type", "work_uri") %in% col_names), 
+                               yes = "Looks okay!", 
+                               no = paste("Error! Missing a required column(s). Required columns are:","doi", "title", "type", "work_uri")),
+             Altmetrics = ifelse(all(c("measure_id", "timestamp", "work_uri", "country_uri", "event_uri", "value") %in% col_names), 
+                                 yes = "Looks okay!", 
+                                 no = paste("Error! Missing a required column(s). Required columns are:","measure_id", "timestamp", "work_uri", "country_uri", "event_uri", "value"))
+             ) # end of switch
+    })
     
     
-    #input$header
+    # This shows the file name, size and type
+    output$uploaded_file_details <- renderTable({
+      if (is.null(uploaded_data()))
+        return(NULL)
+      input$upload %>% select(-datapath)
+      #ifelse(input$head, head(uploaded_data()), as.data.frame(input$upload))
+    })
     
+    # This shows a preview of the uploaded data
+    output$uploaded_file_head <- renderTable({
+      if (is.null(uploaded_data()))
+        return(NULL)
+      req(input$head)
+      head(uploaded_data())
+    })
     
+    # Should we replace, or append the existing data?
     
+    # A message to say that's been successful
     
-    
-    
-    
-    
-    
+    # A message about version control
+
     
     
     

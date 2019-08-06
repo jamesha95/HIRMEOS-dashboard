@@ -25,8 +25,10 @@ This guide will help you deploy a Shiny dashboard that displays book usage metri
  * If your file `metrics.csv` included DOIs but not titles, you can retrieve the titles by running `source(get_metadata.R)` in the console. This will edit your `.csv` and append titles data.
  * In future, if you need altimetric data (like tweets), you will be able to call `source(get_altmetrics.R)` in the console; this will write a new file called `altmetrics.csv`.
  9. Now you're ready to run the app. Still in RStudio (in your browser), open app.R. At the top-right of the script, hit `Run App` (or click the drop-down and select `Run in Window`). You may be prompted that the browser prevented a pop-up. Allow pop-up windows for this address, and check that the app is working normally. If a new page opens but says `Connection refused`, close your browser windows, access `127.0.0.1:28787` in a new window, and try again.
- 10. From within the app, you can press `Publish` in the top-right corner. If prompted to download some extra packages to allow this, do so. You will then be guided through the steps to publish the app. Only publish the `app.R` script, the `data` folder and any logos in the `www` folder. Sign into your ShinyApps.io account and follow the prompts to get a token. Once you give RStudio the token, the app will be deployed at your url. Simply visit the url and verify that it works. 
+ 10. From within the app, you can press `Publish` in the top-right corner. If prompted to download some extra packages to allow this, do so. You will then be guided through the steps to publish the app. Sign into your ShinyApps.io account and follow the prompts to get a token. Once you give RStudio the token, the app will be deployed at your url. Simply visit the url and verify that it works. 
 
 ---
 
-And that should be all! To stop the container, go back to the command line and run `docker stop hirmeos-dashboard`. 
+And that should be all! To stop the container, go back to the command line and run `docker stop hirmeos-dashboard`.
+
+If you want to allow users to directly upload data to the dashboard, you can do so by setting a desired password in the `secrets` folder -- simply name it `admin_password.csv`. Users will then be able to download/upload data in the Admin tab of the live dashboard.
