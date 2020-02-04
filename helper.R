@@ -136,7 +136,7 @@ wrangle_event_data <- function(data){
   data %>% 
     mutate(work_uri = paste0("info:doi:", work_uri)) %>%
     left_join(meta_data, by = c("work_uri" = "work_uri")) %>%
-    separate(col = measure_id, into = c("junk", "junk2", "junk3","platform", "measure", "version"), sep = "/") %>%
+    separate(col = measure_uri, into = c("junk", "junk2", "junk3","platform", "measure", "version"), sep = "/") %>%
     select(-c(junk, junk2, junk3)) %>% 
     mutate(platform = str_replace(platform, "-", " ")) %>%
     mutate(platform_measure = paste0(platform, ": ", measure)) %>% 

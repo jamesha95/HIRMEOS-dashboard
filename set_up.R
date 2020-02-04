@@ -74,7 +74,7 @@ all_data <- metrics_data %>%
   filter(type %in% c("monograph", "book")) %>%  
   
   select(work_uri,
-         measure_id, # this tells us what sort of metric we're looking at
+         measure_uri, # this tells us what sort of metric we're looking at
          value, # the value of the metric   
          timestamp, # this tells us what date
          country_uri, # this tells us what country
@@ -88,7 +88,7 @@ all_data <- metrics_data %>%
   mutate(country_name = ifelse(is.na(country_name), 
                                "No info", 
                                country_name)) %>% 
-  separate(col = measure_id, into = c("junk", "junk2", "junk3","platform", "measure", "version"), sep = "/") %>%
+  separate(col = measure_uri, into = c("junk", "junk2", "junk3","platform", "measure", "version"), sep = "/") %>%
   select(-c(junk, junk2, junk3)) %>%  
   mutate(platform = str_replace(platform, "-", " ")) %>%
   mutate(platform_measure = str_to_title(paste0(platform, ": ", measure))) %>% 

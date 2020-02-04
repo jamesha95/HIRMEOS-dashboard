@@ -183,12 +183,14 @@ ui <- dashboardPage(
                 column(6,
                        # First interactive content: choosing book by title
                        wellPanel(pickerInput(inputId = "title", 
-                                             label = "Choose a title or select all", 
+                                             label = "Choose up to 20 titles", 
                                              selected = titles[1],
                                              choices = titles,
-                                             options = pickerOptions(actionsBox = TRUE,
+                                             options = pickerOptions(actionsBox = FALSE,
                                                                      liveSearch = TRUE,
                                                                      virtualScroll = TRUE,
+                                                                     maxOptions = 20,
+                                                                     maxOptionsText = "Limit of 20 titles",
                                                                      mobile = FALSE), # setting mobile = TRUE breaks the picker on computers
                                              
                                              multiple = TRUE)
@@ -272,11 +274,13 @@ ui <- dashboardPage(
       
       tabItem(tabName = "Metrics_by_country",
               wellPanel(pickerInput(inputId = "title2", 
-                                    label = "Choose a title or select all", 
+                                    label = "Choose up to 20 titles", 
                                     # selected = titles,  # start with all or none selected
                                     # none is the better option, because dots don't load by default until someone interacts with the map
                                     choices = titles,
-                                    options = pickerOptions(actionsBox = TRUE,
+                                    options = pickerOptions(actionsBox = FALSE,
+                                                            maxOptions = 20,
+                                                            maxOptionsText = "Limit of 20 titles",
                                                             liveSearch = TRUE,
                                                             virtualScroll = TRUE),
                                     
@@ -764,15 +768,15 @@ server <- function(input, output, session) {
     req(input$upload)
     col_names <- uploaded_data() %>% names()
     switch(input$file_type,
-           Metrics = ifelse(all(c("measure_id", "timestamp", "work_uri", "country_uri", "value") %in% col_names), 
+           Metrics = ifelse(all(c("measure_uri", "timestamp", "work_uri", "country_uri", "value") %in% col_names), 
                             yes = "Looks okay!", 
-                            no = paste("Error! Missing a required column(s). Required columns are:","measure_id", "timestamp", "work_uri", "country_uri", "value")),
-           Metadata = ifelse(all(c("doi", "title", "type", "work_uri") %in% col_names), 
+                            no = paste("Error! Missing a required column(s). Required columns are:","measure_uri", "timestamp", "work_uri", "country_uri", "value")),
+           Metadata = ifelse(all(c("doi", "title", "type") %in% col_names), 
                              yes = "Looks okay!", 
-                             no = paste("Error! Missing a required column(s). Required columns are:","doi", "title", "type", "work_uri")),
-           Altmetrics = ifelse(all(c("measure_id", "timestamp", "work_uri", "country_uri", "event_uri", "value") %in% col_names), 
+                             no = paste("Error! Missing a required column(s). Required columns are:","doi", "title", "type")),
+           Altmetrics = ifelse(all(c("measure_uri", "timestamp", "work_uri", "country_uri", "event_uri", "value") %in% col_names), 
                                yes = "Looks okay!", 
-                               no = paste("Error! Missing a required column(s). Required columns are:","measure_id", "timestamp", "work_uri", "country_uri", "event_uri", "value"))
+                               no = paste("Error! Missing a required column(s). Required columns are:","measure_uri", "timestamp", "work_uri", "country_uri", "event_uri", "value"))
     ) # end of switch
   })
   
@@ -819,9 +823,10 @@ server <- function(input, output, session) {
                               str_to_lower(input$file_type),
                               ".csv"), 
                 append = (input$replace_or_append == "Append"))
-      source("set_up.R") ## So this kills the app. Perhaps pre-processed data cannot be amended
+      source("set_up.R") 
       ## Does EVERY dataset need to be reactive?
       ## I think it might... Otherwise the static charts don't know to update
+      ## In particular, all_data is non-reactive.
       outcome$text <- "Upload complete!"
       
     }else{outcome$text <- "Upload failed! Is your data in the right format?"}
