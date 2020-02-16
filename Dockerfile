@@ -16,6 +16,8 @@ ENV USER rstudio
 COPY ./app.R /home/$USER/app.R
 ## COPY ./get_altmetrics.R /home/$USER/get_altmetrics.R
 COPY ./get_metadata.R /home/$USER/get_metadata.R
+COPY ./helper.R /home/$USER/helper.R
+COPY ./set_up.R /home/$USER/set_up.R
 COPY ./data /home/$USER/data
 COPY ./www /home/$USER/www
 

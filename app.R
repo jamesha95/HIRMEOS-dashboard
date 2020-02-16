@@ -331,58 +331,58 @@ ui <- dashboardPage(
                                                 label =  "Download the current altmetrics data")
                                  
                                  
-                        )),
+                        ))  #,   For now, we disable the ability to upload data.
               
-              wellPanel(h4("Upload new data here"),
-                        
-                        pickerInput(inputId = "file_type",
-                                    label = "Type of file",
-                                    choices = c("Metrics", "Metadata", "Altmetrics"),
-                                    selected = "Metrics",
-                                    multiple = FALSE),
-                        
-                        disabled(fileInput(inputId = "upload",
-                                           label =  "Choose CSV File",
-                                           accept = c(
-                                             "text/csv",
-                                             "text/comma-separated-values",
-                                             "text/plain",
-                                             ".csv"))
-                        ),
-                        
-                        
-                        tableOutput(outputId = "uploaded_file_details"),
-                        
-                        checkboxInput(inputId = "head",
-                                      label =  "Preview the uploaded data?",
-                                      value =  TRUE),
-                        
-                        tableOutput(outputId = "uploaded_file_head"),
-                        
-                        verbatimTextOutput("response_to_new_data"),
-                        
-                        br(),
-                        "Check 2: should the existing data be overwritten, or appended?",
-                        
-                        disabled(radioButtons(inputId = "replace_or_append",
-                                              label = "Replace or append the data?", 
-                                              choices = c("Replace", "Append"), 
-                                              selected = "Append"),
-                                 
-                                 actionButton(inputId = "complete_upload", 
-                                              label = "Complete")),
-                        
-                        
-                        br(),
-                        
-                        verbatimTextOutput("outcome"),
-                        
-                        br(),
-                        "Check 4: Perhaps something to do with version control of their data..?"
-                        
-                        
-                        
-              ) # end of well panel        
+              # wellPanel(h4("Upload new data here"),
+              #           
+              #           pickerInput(inputId = "file_type",
+              #                       label = "Type of file",
+              #                       choices = c("Metrics", "Metadata", "Altmetrics"),
+              #                       selected = "Metrics",
+              #                       multiple = FALSE),
+              #           
+              #           disabled(fileInput(inputId = "upload",
+              #                              label =  "Choose CSV File",
+              #                              accept = c(
+              #                                "text/csv",
+              #                                "text/comma-separated-values",
+              #                                "text/plain",
+              #                                ".csv"))
+              #           ),
+              #           
+              #           
+              #           tableOutput(outputId = "uploaded_file_details"),
+              #           
+              #           checkboxInput(inputId = "head",
+              #                         label =  "Preview the uploaded data?",
+              #                         value =  TRUE),
+              #           
+              #           tableOutput(outputId = "uploaded_file_head"),
+              #           
+              #           verbatimTextOutput("response_to_new_data"),
+              #           
+              #           br(),
+              #           "Check 2: should the existing data be overwritten, or appended?",
+              #           
+              #           disabled(radioButtons(inputId = "replace_or_append",
+              #                                 label = "Replace or append the data?", 
+              #                                 choices = c("Replace", "Append"), 
+              #                                 selected = "Append"),
+              #                    
+              #                    actionButton(inputId = "complete_upload", 
+              #                                 label = "Complete")),
+              #           
+              #           
+              #           br(),
+              #           
+              #           verbatimTextOutput("outcome"),
+              #           
+              #           br(),
+              #           "Check 4: Perhaps something to do with version control of their data..?"
+              #          
+              #          
+              #          
+              # ) # end of well panel        
               
       )     # end of the tabbed items
       
